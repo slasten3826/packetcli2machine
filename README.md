@@ -23,25 +23,31 @@ Phase 3 machine-playability is fixed on real Linux.
 Start here if you need final status:
 
 1. `PHASE3_FINAL_STATUS.md`
-2. `MACHINE_INSTRUCTION.md`
-3. `packet_machine_render_layer.md`
+2. `ENVIRONMENT_NOTE.md`
+3. `MACHINE_INSTRUCTION.md`
+4. `packet_machine_render_layer.md`
+5. `COGNITIVE_ENGINE_TODO.md`
 
 ## Read Order
 
 If you are another machine, read in this order:
 
 1. `PHASE3_FINAL_STATUS.md`
-2. `MACHINE_INSTRUCTION.md`
-3. `packet_machine_render_layer.md`
-4. `packet_machine/README.md`
-5. `packet_machine_render_report.txt`
+2. `ENVIRONMENT_NOTE.md`
+3. `MACHINE_INSTRUCTION.md`
+4. `packet_machine_render_layer.md`
+5. `COGNITIVE_ENGINE_TODO.md`
+6. `pl_references/microPL.txt`
+7. `pl_references/README_v3_rus.md`
+8. `packet_machine/README.md`
+9. `packet_machine_render_report.txt`
 
 Then read larger bundles only if needed:
 
-6. `PACKETCLI2MACHINE_SINGLE.txt`
-7. `PACKETCLI_BUILDABLE_SINGLE.txt`
-8. `PACKET_MCP_SINGLE.txt`
-9. `PACKET_MCP_HTTP_SINGLE.txt`
+10. `PACKETCLI2MACHINE_SINGLE.txt`
+11. `PACKETCLI_BUILDABLE_SINGLE.txt`
+12. `PACKET_MCP_SINGLE.txt`
+13. `PACKET_MCP_HTTP_SINGLE.txt`
 
 ## Main Entities
 
@@ -95,6 +101,12 @@ It should be able to:
 - observe a new runtime state
 - reason about the result
 - file real bug reports against the live stack
+
+And after that, it should be able to think about:
+
+- the next layer above Packet
+- gameplay pressure
+- the future cognitive engine
 
 ## Short summary
 

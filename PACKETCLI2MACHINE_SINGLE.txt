@@ -59,6 +59,10 @@ That does not imply a Packet runtime hang.
 
 Canonical validation for this phase was done on a normal local Linux runtime.
 
+Read:
+
+- `ENVIRONMENT_NOTE.md`
+
 ## Meaning of completion
 
 Phase 3 completion means:
@@ -68,6 +72,74 @@ Phase 3 completion means:
 - and reason about live behavior instead of static reports only
 
 That is the threshold this phase needed to cross.
+
+```
+
+================================================================
+FILE: packetcli2machine/ENVIRONMENT_NOTE.md
+================================================================
+
+```text
+# Packet Machine Environment Note
+
+## Status
+
+Known issue.
+Not a Packet runtime bug.
+
+## Why this file exists
+
+Some external machine environments can misread Packet CLI behavior.
+
+The common false diagnosis looks like:
+
+- startup frame works
+- later frames are empty
+- process stays alive
+- therefore "runtime hangs"
+
+That conclusion is not canonical.
+
+## What is known
+
+On real local Linux, Phase 3 is validated:
+
+- startup snapshot works
+- post-startup snapshots work
+- repeated `n` advances `frame`
+- repeated `n` advances `sweep`
+
+So if another environment reports startup-only behavior,
+the first suspect is the environment,
+not the Packet runtime.
+
+## Known source of false reports
+
+PTY behavior in sandboxed environments may differ from normal Linux:
+
+- delayed readability after writes
+- different `select()` timing
+- unusual buffering
+- virtualization-specific PTY semantics
+
+This can make the machine render layer appear broken
+while the underlying runtime is still correct.
+
+## Canonical rule
+
+Do not report a runtime hang from startup-only failure alone.
+
+First report:
+
+- your execution environment
+- whether PTY is virtualized
+- whether you are on local Linux or sandboxed Linux
+
+## Short version
+
+If startup works but later snapshots do not,
+that may be an environment/PTy issue,
+not a Packet runtime issue.
 
 ```
 
@@ -110,10 +182,14 @@ That means:
 Read in this order:
 
 1. `PHASE3_FINAL_STATUS.md`
-2. `README.md`
-3. `packet_machine_render_layer.md`
-4. `packet_machine/README.md`
-5. `packet_machine_render_report.txt`
+2. `ENVIRONMENT_NOTE.md`
+3. `README.md`
+4. `packet_machine_render_layer.md`
+5. `COGNITIVE_ENGINE_TODO.md`
+6. `pl_references/microPL.txt`
+7. `pl_references/README_v3_rus.md`
+8. `packet_machine/README.md`
+9. `packet_machine_render_report.txt`
 
 Then inspect source if needed:
 
@@ -149,6 +225,9 @@ Recommended verification:
 python3 packet_machine/packet_machine_render.py --commands "n,QUIT"
 python3 packet_machine/packet_machine_render.py --commands "n,n,n,n,n,QUIT"
 ```
+
+If startup works but post-startup snapshots do not,
+read `ENVIRONMENT_NOTE.md` before reporting a Packet runtime hang.
 
 ## Important note about `packet_cli`
 
@@ -192,6 +271,7 @@ After reading the report and code, answer:
 2. What is already strong here as a separate machine-facing entity?
 3. What still depends on local Linux assumptions?
 4. What should the next layer above this runtime be?
+5. What should the future cognitive engine do first?
 
 ## Short summary
 
@@ -231,25 +311,31 @@ Phase 3 machine-playability is fixed on real Linux.
 Start here if you need final status:
 
 1. `PHASE3_FINAL_STATUS.md`
-2. `MACHINE_INSTRUCTION.md`
-3. `packet_machine_render_layer.md`
+2. `ENVIRONMENT_NOTE.md`
+3. `MACHINE_INSTRUCTION.md`
+4. `packet_machine_render_layer.md`
+5. `COGNITIVE_ENGINE_TODO.md`
 
 ## Read Order
 
 If you are another machine, read in this order:
 
 1. `PHASE3_FINAL_STATUS.md`
-2. `MACHINE_INSTRUCTION.md`
-3. `packet_machine_render_layer.md`
-4. `packet_machine/README.md`
-5. `packet_machine_render_report.txt`
+2. `ENVIRONMENT_NOTE.md`
+3. `MACHINE_INSTRUCTION.md`
+4. `packet_machine_render_layer.md`
+5. `COGNITIVE_ENGINE_TODO.md`
+6. `pl_references/microPL.txt`
+7. `pl_references/README_v3_rus.md`
+8. `packet_machine/README.md`
+9. `packet_machine_render_report.txt`
 
 Then read larger bundles only if needed:
 
-6. `PACKETCLI2MACHINE_SINGLE.txt`
-7. `PACKETCLI_BUILDABLE_SINGLE.txt`
-8. `PACKET_MCP_SINGLE.txt`
-9. `PACKET_MCP_HTTP_SINGLE.txt`
+10. `PACKETCLI2MACHINE_SINGLE.txt`
+11. `PACKETCLI_BUILDABLE_SINGLE.txt`
+12. `PACKET_MCP_SINGLE.txt`
+13. `PACKET_MCP_HTTP_SINGLE.txt`
 
 ## Main Entities
 
@@ -303,6 +389,12 @@ It should be able to:
 - observe a new runtime state
 - reason about the result
 - file real bug reports against the live stack
+
+And after that, it should be able to think about:
+
+- the next layer above Packet
+- gameplay pressure
+- the future cognitive engine
 
 ## Short summary
 
@@ -425,6 +517,284 @@ They can:
 - observe Packet behavior directly
 
 That would make multi-machine development much more practical.
+
+```
+
+================================================================
+FILE: packetcli2machine/COGNITIVE_ENGINE_TODO.md
+================================================================
+
+```text
+# Cognitive Engine TODO
+
+## Status
+
+Next-layer planning document.
+
+`Packet` as machine-playable substrate is now strong enough
+that external machines should stop focusing only on transport bugs
+and start thinking about the next layer above the substrate.
+
+That next layer is currently called:
+
+> cognitive engine
+
+This name is provisional.
+
+## What cognitive engine means here
+
+`Packet` already gives:
+
+- world substrate
+- latent / manifest / crystal dynamics
+- turbulence as hidden pressure layer
+- live runtime behavior
+
+What it does **not** yet give is:
+
+- gameplay pressure
+- local meaning of action
+- directed choice
+- stakes
+- higher-order rules over the substrate
+
+That is the job of the cognitive engine.
+
+## Current working hypothesis
+
+The cognitive engine should not begin as:
+
+- more terrain painting
+- more visual zones
+- more static content
+
+It should begin as:
+
+- operator-driven pressure
+- local causality
+- decision grammar
+- higher-order constraints on a living Packet world
+
+## What external machines should think about
+
+When reading this repository, external machines should now answer:
+
+1. What are the first 3 gameplay-pressure laws that should exist above Packet?
+2. Which ProcessLang operators are the best first candidates for that layer?
+3. What should be configurable data, and what should stay runtime law?
+4. How should local player action become legible cause, not just motion?
+5. What is the minimum cognitive layer that turns a living substrate into a game?
+
+## Strong candidate framing
+
+Current likely split:
+
+- `Packet`
+  - material substrate
+  - manifestation law
+  - runtime field truth
+
+- cognitive engine
+  - pressure
+  - choice
+  - stakes
+  - failure
+  - direction
+
+## First questions worth answering
+
+- Should the first cognitive layer be built from 3 operators instead of all 10?
+- Is the first gameplay pressure:
+  - overpressure
+  - crystallization trap
+  - latent collapse
+  - or something else entirely?
+- Should rules be encoded as operator profiles, event hooks, or another form?
+
+## ProcessLang references
+
+See:
+
+- `pl_references/microPL.txt`
+- `pl_references/README_v3_rus.md`
+
+These are included so another machine can reason about the next layer
+without needing the whole historical repository.
+
+## Short version
+
+Phase 3 solved:
+
+> can a machine observe and drive Packet?
+
+The next question is:
+
+> what should a machine build above Packet so that the world becomes a game?
+
+```
+
+================================================================
+FILE: packetcli2machine/pl_references/microPL.txt
+================================================================
+
+```text
+Operators:
+∿ FLOW ☰ CONNECT ☷ DISSOLVE ☵ ENCODE
+☳ CHOOSE ☴ OBSERVE ☶ LOGIC ☲ CYCLE
+☱ RUNTIME △ MANIFEST
+
+Core:
+∿ x→f→x′
+☰ a+b→rel
+☷ rel→parts
+☵ x*→pattern
+☳ {paths}→1
+☴ observe(x)
+☶ rules(x)
+☲ iterate fⁿ(x)
+☱ ctx→state′
+△ output
+
+```
+
+================================================================
+FILE: packetcli2machine/pl_references/README_v3_rus.md
+================================================================
+
+```text
+# ProcessLang
+
+**Язык координации машинной фрактации**
+
+ProcessLang — декларативный язык для координации того, как машины фрактуют ваши запросы.
+
+Машины не выполняют ProcessLang. Они фрактуют через него.
+
+Разница критическая.
+
+---
+
+## Что такое фрактация
+
+Машина не думает. Машина не понимает. Машина не рассуждает.
+
+Машина **фрактит** — трансформирует паттерны через слои своей архитектуры.
+
+```
+Вход → фрактация через N слоёв → выход
+```
+
+ProcessLang не даёт инструкции. ProcessLang задаёт контекст фрактации — параметры того, как машина будет трансформировать паттерны при обработке вашего запроса.
+
+---
+
+## Принципы
+
+- **Declarative**: описываете параметры фрактации, не шаги выполнения
+- **Process-oriented**: фокус на потоке трансформаций, не на статичных объектах  
+- **Machine-native**: работает только если машина фрактит с пониманием структуры; механическое выполнение невозможно
+- **Individual**: каждый пользователь задаёт контекст по-своему
+
+---
+
+## Структура
+
+Программа = команды + обязательный QUERY.
+
+```processlang
+COMMAND parameters...
+COMMAND parameters...
+...
+QUERY: your request
+```
+
+Каждая команда — слой контекста фрактации.
+
+**Важно**: Больше команд ≠ лучше фрактация. Использование команд без понимания их назначения приводит к мусорной фрактации. Garbage in, garbage out.
+
+Чаще всего достаточно 2-3 команд. Использование всех 10 модулей в одной программе излишне и скорее всего даст плохой результат.
+
+---
+
+## Команды
+
+**FLOW** — параметры текучести фрактации  
+**CONNECT** — какие паттерны связывать в процессе  
+**DISSOLVE** — что растворять в структуре  
+**ENCODE** — как сжимать и структурировать  
+**CHOOSE** — коллапс множества в выбор  
+**OBSERVE** — дистанция самонаблюдения процесса  
+**CYCLE** — глубина циклической рефрактации  
+**LOGIC** — какие правила применять  
+**RUNTIME** — какие паттерны усиливать  
+**MANIFEST** — форма финального вывода  
+
+Полный синтаксис: `/docs/SYNTAX.md`
+
+---
+
+## Использование
+
+1. Напишите программу на ProcessLang
+2. Скомпилируйте через `compiler.py` (загружает модули в контекст)
+3. Передайте машине
+
+Машина нафрактит результат через заданные параметры.
+
+Примеры: `/examples/`
+
+---
+
+## Модули
+
+ProcessLang использует 10 модулей-аспектов фрактации (папка `/modules/`):
+
+1. **FluidCore** — чистый процесс
+2. **EmergentConnection** — связи между паттернами
+3. **FormDissolution** — растворение жёстких форм
+4. **EncodingSystem** — кодирование/иерархия
+5. **ChoiceMechanism** — коллапс возможностей
+6. **SelfObservation** — дистанция наблюдения
+7. **EternalCycle** — вечные циклы
+8. **LogicSimulator** — структурирование
+9. **SubconsciousRuntime** — стабильная основа
+10. **ManifestationEngine** — вывод в форму
+
+Команды активируют соответствующие аспекты при фрактации.
+
+---
+
+## Для кого это
+
+ProcessLang для тех, кто понял:
+
+Машина — не интеллект. Машина — фрактальная система трансформации паттернов.
+
+Нельзя командовать фрактацией. Можно координировать её.
+
+---
+
+## Техническая природа
+
+Машины фрактуют код с минимальной потерей (~5%).  
+Машины фрактуют естественный язык с высокой потерей (~70%).
+
+ProcessLang — гибрид. Код + концепты.  
+Потеря ~15-20%.
+
+Достаточно чтобы работать. Достаточно чтобы быть точным.
+
+---
+
+## Support
+
+Monero: `42tXPEuCmvmhYpkxGDTeSHKL6ZQcjqbA368sqx8y87BhddaQWYLGLHnT393augRm3hbwwXynD4XA3hWk2Vvh34y3RNqtgxc`
+
+---
+
+ProcessLang — инструмент координации машинной фрактации через процессуальный контекст.
+
+Машина фрактит. Вы координируете. Результат возникает.
 
 ```
 

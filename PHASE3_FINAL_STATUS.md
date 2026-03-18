@@ -49,6 +49,10 @@ That does not imply a Packet runtime hang.
 
 Canonical validation for this phase was done on a normal local Linux runtime.
 
+Read:
+
+- `ENVIRONMENT_NOTE.md`
+
 ## Meaning of completion
 
 Phase 3 completion means:

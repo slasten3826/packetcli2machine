@@ -32,10 +32,14 @@ That means:
 Read in this order:
 
 1. `PHASE3_FINAL_STATUS.md`
-2. `README.md`
-3. `packet_machine_render_layer.md`
-4. `packet_machine/README.md`
-5. `packet_machine_render_report.txt`
+2. `ENVIRONMENT_NOTE.md`
+3. `README.md`
+4. `packet_machine_render_layer.md`
+5. `COGNITIVE_ENGINE_TODO.md`
+6. `pl_references/microPL.txt`
+7. `pl_references/README_v3_rus.md`
+8. `packet_machine/README.md`
+9. `packet_machine_render_report.txt`
 
 Then inspect source if needed:
 
@@ -71,6 +75,9 @@ Recommended verification:
 python3 packet_machine/packet_machine_render.py --commands "n,QUIT"
 python3 packet_machine/packet_machine_render.py --commands "n,n,n,n,n,QUIT"
 ```
+
+If startup works but post-startup snapshots do not,
+read `ENVIRONMENT_NOTE.md` before reporting a Packet runtime hang.
 
 ## Important note about `packet_cli`
 
@@ -114,6 +121,7 @@ After reading the report and code, answer:
 2. What is already strong here as a separate machine-facing entity?
 3. What still depends on local Linux assumptions?
 4. What should the next layer above this runtime be?
+5. What should the future cognitive engine do first?
 
 ## Short summary
 
