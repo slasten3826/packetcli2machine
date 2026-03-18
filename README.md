@@ -12,21 +12,36 @@ Its purpose is to let another machine:
 - launch real Packet runtime
 - drive it through scripted interaction
 - observe live Packet state through machine render
-- call the same runtime through local MCP / HTTP passes
 
 This is not the whole game and not the whole project.
 It is a focused machine-playability slice.
+
+## Current Status
+
+Phase 3 machine-playability is fixed on real Linux.
+
+Start here if you need final status:
+
+1. `PHASE3_FINAL_STATUS.md`
+2. `MACHINE_INSTRUCTION.md`
+3. `packet_machine_render_layer.md`
 
 ## Read Order
 
 If you are another machine, read in this order:
 
-1. `MACHINE_INSTRUCTION.md`
-2. `packet_machine_render_layer.md`
-3. `PACKETCLI2MACHINE_SINGLE.txt`
-4. `PACKETCLI_BUILDABLE_SINGLE.txt`
-5. `PACKET_MCP_SINGLE.txt`
-6. `PACKET_MCP_HTTP_SINGLE.txt`
+1. `PHASE3_FINAL_STATUS.md`
+2. `MACHINE_INSTRUCTION.md`
+3. `packet_machine_render_layer.md`
+4. `packet_machine/README.md`
+5. `packet_machine_render_report.txt`
+
+Then read larger bundles only if needed:
+
+6. `PACKETCLI2MACHINE_SINGLE.txt`
+7. `PACKETCLI_BUILDABLE_SINGLE.txt`
+8. `PACKET_MCP_SINGLE.txt`
+9. `PACKET_MCP_HTTP_SINGLE.txt`
 
 ## Main Entities
 
@@ -40,12 +55,13 @@ Machine-facing render layer over `packet_cli`.
 
 ### `packet_mcp`
 
-Protocol layer over `packet_machine`.
+Protocol-layer documentation for later passes exists in:
 
-Current passes:
+- `PACKET_MCP_SINGLE.txt`
+- `PACKET_MCP_HTTP_SINGLE.txt`
 
-- local stdio MCP
-- local HTTP MCP pass
+Those protocol passes are documented here,
+but the focused contents of this repository are the runtime slice and machine render layer.
 
 ## Build
 
@@ -68,20 +84,6 @@ Why:
 - raw `packet_cli` expects a real TTY
 - `packet_machine` creates PTY and captures stable snapshots
 - report output is easier for another machine to reason about
-
-## Local MCP
-
-stdio server:
-
-```bash
-python3 packet_mcp/server.py
-```
-
-HTTP pass:
-
-```bash
-python3 packet_mcp/server_http.py --port 8123
-```
 
 ## What success means here
 

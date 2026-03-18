@@ -4,6 +4,74 @@ This is a single-file machine bundle for Packet CLI.
 Read sections in order. Code blocks and docs are embedded below.
 
 ================================================================
+FILE: packetcli2machine/PHASE3_FINAL_STATUS.md
+================================================================
+
+```text
+# Packet Machine Phase 3 Final Status
+
+## Status
+
+Phase 3 is fixed on real Linux.
+
+This repository should now be read as a machine-playability artifact,
+not as a hypothetical prototype.
+
+## What works
+
+- `make` builds a real `packet_cli`
+- `python3 packet_machine/packet_machine_render.py` runs a real Packet CLI session through PTY
+- scripted runs produce populated snapshots after startup
+- repeated `n` advances `frame` and `sweep`
+- machine-facing observation is stable enough for real bug reports
+
+## What this repo is
+
+This repo is:
+
+- a focused Packet CLI runtime slice
+- a machine-facing render layer over that slice
+
+This repo is **not**:
+
+- the whole game
+- the whole project
+- a fake Packet simulator
+
+## Canonical machine entrypoint
+
+If you are another machine, start here:
+
+```bash
+make
+python3 packet_machine/packet_machine_render.py
+```
+
+If you need protocol-pass context after that, inspect:
+
+- `PACKET_MCP_SINGLE.txt`
+- `PACKET_MCP_HTTP_SINGLE.txt`
+
+## Known boundary
+
+Some sandboxed environments may still have unusual PTY behavior.
+That does not imply a Packet runtime hang.
+
+Canonical validation for this phase was done on a normal local Linux runtime.
+
+## Meaning of completion
+
+Phase 3 completion means:
+
+- another machine can now trigger a real Packet run
+- observe real state change
+- and reason about live behavior instead of static reports only
+
+That is the threshold this phase needed to cross.
+
+```
+
+================================================================
 FILE: packetcli2machine/MACHINE_INSTRUCTION.md
 ================================================================
 
@@ -26,14 +94,26 @@ This is not a fake stub.
 
 It is a minimal real Packet CLI slice plus a machine-facing observation layer.
 
+## Current status
+
+Phase 3 is fixed on real Linux.
+
+That means:
+
+- startup snapshot works
+- post-startup snapshots work
+- repeated `n` advances the runtime
+- `frame` and `sweep` can be observed through machine render
+
 ## What to read first
 
 Read in this order:
 
-1. `README.md`
-2. `packet_machine_render_layer.md`
-3. `packet_machine/README.md`
-4. `packet_machine_render_report.txt`
+1. `PHASE3_FINAL_STATUS.md`
+2. `README.md`
+3. `packet_machine_render_layer.md`
+4. `packet_machine/README.md`
+5. `packet_machine_render_report.txt`
 
 Then inspect source if needed:
 
@@ -62,6 +142,13 @@ python3 packet_machine/packet_machine_render.py
 This writes:
 
 - `packet_machine_render_report.txt`
+
+Recommended verification:
+
+```bash
+python3 packet_machine/packet_machine_render.py --commands "n,QUIT"
+python3 packet_machine/packet_machine_render.py --commands "n,n,n,n,n,QUIT"
+```
 
 ## Important note about `packet_cli`
 
@@ -101,9 +188,10 @@ Meaning:
 
 After reading the report and code, answer:
 
-1. Does this already behave like a real machine-facing render layer?
-2. What is already strong here as a separate entity?
-3. What is still missing before another machine can truly play Packet instead of only observing it?
+1. Does this behave like a real machine-playable runtime slice?
+2. What is already strong here as a separate machine-facing entity?
+3. What still depends on local Linux assumptions?
+4. What should the next layer above this runtime be?
 
 ## Short summary
 
@@ -132,21 +220,36 @@ Its purpose is to let another machine:
 - launch real Packet runtime
 - drive it through scripted interaction
 - observe live Packet state through machine render
-- call the same runtime through local MCP / HTTP passes
 
 This is not the whole game and not the whole project.
 It is a focused machine-playability slice.
+
+## Current Status
+
+Phase 3 machine-playability is fixed on real Linux.
+
+Start here if you need final status:
+
+1. `PHASE3_FINAL_STATUS.md`
+2. `MACHINE_INSTRUCTION.md`
+3. `packet_machine_render_layer.md`
 
 ## Read Order
 
 If you are another machine, read in this order:
 
-1. `MACHINE_INSTRUCTION.md`
-2. `packet_machine_render_layer.md`
-3. `PACKETCLI2MACHINE_SINGLE.txt`
-4. `PACKETCLI_BUILDABLE_SINGLE.txt`
-5. `PACKET_MCP_SINGLE.txt`
-6. `PACKET_MCP_HTTP_SINGLE.txt`
+1. `PHASE3_FINAL_STATUS.md`
+2. `MACHINE_INSTRUCTION.md`
+3. `packet_machine_render_layer.md`
+4. `packet_machine/README.md`
+5. `packet_machine_render_report.txt`
+
+Then read larger bundles only if needed:
+
+6. `PACKETCLI2MACHINE_SINGLE.txt`
+7. `PACKETCLI_BUILDABLE_SINGLE.txt`
+8. `PACKET_MCP_SINGLE.txt`
+9. `PACKET_MCP_HTTP_SINGLE.txt`
 
 ## Main Entities
 
@@ -160,12 +263,13 @@ Machine-facing render layer over `packet_cli`.
 
 ### `packet_mcp`
 
-Protocol layer over `packet_machine`.
+Protocol-layer documentation for later passes exists in:
 
-Current passes:
+- `PACKET_MCP_SINGLE.txt`
+- `PACKET_MCP_HTTP_SINGLE.txt`
 
-- local stdio MCP
-- local HTTP MCP pass
+Those protocol passes are documented here,
+but the focused contents of this repository are the runtime slice and machine render layer.
 
 ## Build
 
@@ -188,20 +292,6 @@ Why:
 - raw `packet_cli` expects a real TTY
 - `packet_machine` creates PTY and captures stable snapshots
 - report output is easier for another machine to reason about
-
-## Local MCP
-
-stdio server:
-
-```bash
-python3 packet_mcp/server.py
-```
-
-HTTP pass:
-
-```bash
-python3 packet_mcp/server_http.py --port 8123
-```
 
 ## What success means here
 
@@ -229,8 +319,8 @@ FILE: packetcli2machine/packet_machine_render_layer.md
 
 ## Status
 
-Working hypothesis.
-First implementation pass follows immediately after this document.
+Implemented.
+Validated on real Linux.
 
 ## Why this exists
 
@@ -242,7 +332,7 @@ First implementation pass follows immediately after this document.
 
 It gave us a text manifestation of the substrate.
 
-Then `packet_cli_harness.py` added one more step:
+Then the old harness step added one more layer:
 
 - not human live play
 - but scripted observation
@@ -287,7 +377,7 @@ Machine render should not:
 The point is not "machine-friendly fake Packet".
 The point is "machine-friendly access to real Packet".
 
-## Current first proof
+## Current proof
 
 Current proof path already exists:
 
@@ -298,36 +388,17 @@ Current proof path already exists:
 
 This is enough to prove the basic claim:
 
-> Another machine can already observe Packet indirectly through a scripted textual manifestation.
+> Another machine can already observe and drive Packet through a scripted textual manifestation.
 
-## Next extraction step
+## Extraction result
 
-We now want to make this explicit.
-
-Not:
-
-- random script in `scripts/`
-
-But:
-
-- an explicit machine-facing layer
-- with its own README
-- with its own entrypoint
-- with its own purpose
-
-## Expected first shape
-
-First shape should stay minimal:
+That extraction is now explicit:
 
 - `packet_machine/README.md`
 - `packet_machine/packet_machine_render.py`
+- `PHASE3_FINAL_STATUS.md`
 
-This layer can start as a thin wrapper over existing CLI manifestation.
-
-That is acceptable.
-
-The important step is not maximal power.
-The important step is architectural recognition:
+The important recognition already happened:
 
 > machine-facing manifestation is now a real project entity
 
@@ -335,8 +406,10 @@ The important step is architectural recognition:
 
 This extraction pass is successful when:
 
-- the new machine render entrypoint works
-- it can generate a report from a real `packet_cli` run
+- the machine render entrypoint works
+- it generates reports from real `packet_cli` runs
+- post-startup snapshots are populated
+- repeated scripted ticks advance `frame`
 - the layer can be pointed to as a distinct entity in the repo
 
 ## Long-term implication
@@ -408,23 +481,32 @@ another machine can also observe:
 
 - repeatable Packet runtime behavior
 
-## First entrypoint
+## Canonical entrypoint
 
 Use:
 
 ```bash
-cd /home/slasten/dev/packet3
+cd /path/to/packetcli2machine
 make packet_cli
 python3 packet_machine/packet_machine_render.py
 ```
 
 This writes a plain-text report containing a startup snapshot and one snapshot after each scripted command.
 
+Recommended first probes:
+
+```bash
+python3 packet_machine/packet_machine_render.py --commands "n,QUIT"
+python3 packet_machine/packet_machine_render.py --commands "n,n,n,n,n,QUIT"
+```
+
+If the layer is healthy, snapshots after startup should be populated and `frame` should increase.
+
 ## Scope
 
-This is not yet a full standalone Packet runtime export.
+This is not the whole Packet project.
 
-It is the first explicit machine-facing render/entity in the project.
+It is the explicit machine-facing render/entity for this runtime slice.
 
 ```
 

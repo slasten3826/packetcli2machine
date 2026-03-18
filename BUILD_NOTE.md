@@ -6,7 +6,8 @@ Important:
 
 - it is not the full repository
 - it is not intended to rebuild the whole project
-- it is intended to show the Packet CLI layer, the harness, and a real sample report
+- it is intended to rebuild the Packet CLI slice contained here
+- it is intended to show the machine render layer and a real sample report
 
 Included for context:
 
@@ -15,9 +16,9 @@ Included for context:
 - `runtime_internal.h`
 - `render_cli.c`
 - `main.c`
-- `packet_cli_harness.py`
-- `packet_cli_machine_harness.md`
-- `packet_cli_harness_report.txt`
+- `packet_machine/packet_machine_render.py`
+- `packet_machine_render_layer.md`
+- `packet_machine_render_report.txt`
 
 Why `runtime_internal.h` is included:
 
@@ -26,9 +27,9 @@ Why `runtime_internal.h` is included:
 
 So this bundle should be read as:
 
-- evidence of a living Packet CLI manifestation
+- a buildable Packet CLI runtime slice
 - plus enough context to understand the current coupling points
 
 Not as:
 
-- a complete standalone rebuild package
+- the whole Packet project

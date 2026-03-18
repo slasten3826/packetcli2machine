@@ -16,14 +16,26 @@ This is not a fake stub.
 
 It is a minimal real Packet CLI slice plus a machine-facing observation layer.
 
+## Current status
+
+Phase 3 is fixed on real Linux.
+
+That means:
+
+- startup snapshot works
+- post-startup snapshots work
+- repeated `n` advances the runtime
+- `frame` and `sweep` can be observed through machine render
+
 ## What to read first
 
 Read in this order:
 
-1. `README.md`
-2. `packet_machine_render_layer.md`
-3. `packet_machine/README.md`
-4. `packet_machine_render_report.txt`
+1. `PHASE3_FINAL_STATUS.md`
+2. `README.md`
+3. `packet_machine_render_layer.md`
+4. `packet_machine/README.md`
+5. `packet_machine_render_report.txt`
 
 Then inspect source if needed:
 
@@ -52,6 +64,13 @@ python3 packet_machine/packet_machine_render.py
 This writes:
 
 - `packet_machine_render_report.txt`
+
+Recommended verification:
+
+```bash
+python3 packet_machine/packet_machine_render.py --commands "n,QUIT"
+python3 packet_machine/packet_machine_render.py --commands "n,n,n,n,n,QUIT"
+```
 
 ## Important note about `packet_cli`
 
@@ -91,9 +110,10 @@ Meaning:
 
 After reading the report and code, answer:
 
-1. Does this already behave like a real machine-facing render layer?
-2. What is already strong here as a separate entity?
-3. What is still missing before another machine can truly play Packet instead of only observing it?
+1. Does this behave like a real machine-playable runtime slice?
+2. What is already strong here as a separate machine-facing entity?
+3. What still depends on local Linux assumptions?
+4. What should the next layer above this runtime be?
 
 ## Short summary
 

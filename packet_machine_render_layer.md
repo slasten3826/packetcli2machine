@@ -2,8 +2,8 @@
 
 ## Status
 
-Working hypothesis.
-First implementation pass follows immediately after this document.
+Implemented.
+Validated on real Linux.
 
 ## Why this exists
 
@@ -15,7 +15,7 @@ First implementation pass follows immediately after this document.
 
 It gave us a text manifestation of the substrate.
 
-Then `packet_cli_harness.py` added one more step:
+Then the old harness step added one more layer:
 
 - not human live play
 - but scripted observation
@@ -60,7 +60,7 @@ Machine render should not:
 The point is not "machine-friendly fake Packet".
 The point is "machine-friendly access to real Packet".
 
-## Current first proof
+## Current proof
 
 Current proof path already exists:
 
@@ -71,36 +71,17 @@ Current proof path already exists:
 
 This is enough to prove the basic claim:
 
-> Another machine can already observe Packet indirectly through a scripted textual manifestation.
+> Another machine can already observe and drive Packet through a scripted textual manifestation.
 
-## Next extraction step
+## Extraction result
 
-We now want to make this explicit.
-
-Not:
-
-- random script in `scripts/`
-
-But:
-
-- an explicit machine-facing layer
-- with its own README
-- with its own entrypoint
-- with its own purpose
-
-## Expected first shape
-
-First shape should stay minimal:
+That extraction is now explicit:
 
 - `packet_machine/README.md`
 - `packet_machine/packet_machine_render.py`
+- `PHASE3_FINAL_STATUS.md`
 
-This layer can start as a thin wrapper over existing CLI manifestation.
-
-That is acceptable.
-
-The important step is not maximal power.
-The important step is architectural recognition:
+The important recognition already happened:
 
 > machine-facing manifestation is now a real project entity
 
@@ -108,8 +89,10 @@ The important step is architectural recognition:
 
 This extraction pass is successful when:
 
-- the new machine render entrypoint works
-- it can generate a report from a real `packet_cli` run
+- the machine render entrypoint works
+- it generates reports from real `packet_cli` runs
+- post-startup snapshots are populated
+- repeated scripted ticks advance `frame`
 - the layer can be pointed to as a distinct entity in the repo
 
 ## Long-term implication

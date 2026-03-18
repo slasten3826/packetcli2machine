@@ -46,20 +46,29 @@ another machine can also observe:
 
 - repeatable Packet runtime behavior
 
-## First entrypoint
+## Canonical entrypoint
 
 Use:
 
 ```bash
-cd /home/slasten/dev/packet3
+cd /path/to/packetcli2machine
 make packet_cli
 python3 packet_machine/packet_machine_render.py
 ```
 
 This writes a plain-text report containing a startup snapshot and one snapshot after each scripted command.
 
+Recommended first probes:
+
+```bash
+python3 packet_machine/packet_machine_render.py --commands "n,QUIT"
+python3 packet_machine/packet_machine_render.py --commands "n,n,n,n,n,QUIT"
+```
+
+If the layer is healthy, snapshots after startup should be populated and `frame` should increase.
+
 ## Scope
 
-This is not yet a full standalone Packet runtime export.
+This is not the whole Packet project.
 
-It is the first explicit machine-facing render/entity in the project.
+It is the explicit machine-facing render/entity for this runtime slice.
