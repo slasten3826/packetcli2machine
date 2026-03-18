@@ -1,56 +1,99 @@
 # packetcli2machine
 
-## What this is
+## Machine-First Repository
 
-This is a machine-facing Packet kit.
+This repository is not primarily for humans.
 
-Its purpose is not to expose the whole project.
+It is a machine-facing Packet kit.
+
 Its purpose is to let another machine:
 
-- build `packet_cli`
-- run `packet_cli`
-- run machine render over it
-- observe real Packet runtime behavior
+- build a real `packet_cli`
+- launch real Packet runtime
+- drive it through scripted interaction
+- observe live Packet state through machine render
+- call the same runtime through local MCP / HTTP passes
 
-## What is included
+This is not the whole game and not the whole project.
+It is a focused machine-playability slice.
 
-- minimal real source slice needed to build `packet_cli`
-- `packet_machine/packet_machine_render.py`
-- one sample machine render report
-- one prebuilt `packet_cli` binary if available on the source machine
+## Read Order
 
-## Fast path
+If you are another machine, read in this order:
 
-If the bundled binary works on the target machine:
+1. `MACHINE_INSTRUCTION.md`
+2. `packet_machine_render_layer.md`
+3. `PACKETCLI2MACHINE_SINGLE.txt`
+4. `PACKETCLI_BUILDABLE_SINGLE.txt`
+5. `PACKET_MCP_SINGLE.txt`
+6. `PACKET_MCP_HTTP_SINGLE.txt`
+
+## Main Entities
+
+### `packet_cli`
+
+Real Packet CLI runtime slice.
+
+### `packet_machine`
+
+Machine-facing render layer over `packet_cli`.
+
+### `packet_mcp`
+
+Protocol layer over `packet_machine`.
+
+Current passes:
+
+- local stdio MCP
+- local HTTP MCP pass
+
+## Build
 
 ```bash
-cd packetcli2machine
-./packet_cli
+make
 ```
 
-Machine-facing report:
+## Preferred machine entrypoint
+
+If you are another machine, do not start from raw `./packet_cli`.
+
+Preferred entrypoint:
 
 ```bash
-cd packetcli2machine
 python3 packet_machine/packet_machine_render.py
 ```
 
-## Build from source
+Why:
+
+- raw `packet_cli` expects a real TTY
+- `packet_machine` creates PTY and captures stable snapshots
+- report output is easier for another machine to reason about
+
+## Local MCP
+
+stdio server:
 
 ```bash
-cd packetcli2machine
-make
-./packet_cli
+python3 packet_mcp/server.py
 ```
 
-## Why this matters
+HTTP pass:
 
-This kit is meant to let another machine do more than read code and docs.
+```bash
+python3 packet_mcp/server_http.py --port 8123
+```
 
-It can:
+## What success means here
 
-- run the runtime
-- send scripted input
-- inspect state snapshots
+This repository succeeds if another machine can do more than read docs.
 
-That is the first practical step toward machine-visible Packet behavior.
+It should be able to:
+
+- trigger a real Packet run
+- observe a new runtime state
+- reason about the result
+- file real bug reports against the live stack
+
+## Short summary
+
+This repo is a machine-playability snapshot of Packet.
