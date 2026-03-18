@@ -113,6 +113,7 @@ int main(void) {
     PaApp app;
     PaCliRenderMode mode = PA_CLI_MODE_COMPOSITE;
     int auto_run = 0;
+    int needs_render = 1;
     long sleep_ms = 120L;
 
     pa_app_init(&app);
@@ -125,9 +126,12 @@ int main(void) {
     for (;;) {
         PaCliInput input;
 
-        pa_cli_render_frame(stdout, &app, mode, auto_run);
-        fprintf(stdout, "controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed\n");
-        fprintf(stdout, "dev: space auto-run, n single tick, v cycle view, q/x quit\n");
+        if (needs_render) {
+            fprintf(stdout, "controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed\n");
+            fprintf(stdout, "dev: space auto-run, n single tick, v cycle view, q/x quit\n");
+            pa_cli_render_frame(stdout, &app, mode, auto_run);
+            needs_render = 0;
+        }
 
         input = pa_cli_poll_input();
         if (input.quit_requested) {
@@ -136,14 +140,17 @@ int main(void) {
 
         if (input.auto_run_toggled) {
             auto_run = !auto_run;
+            needs_render = 1;
         }
         if (input.cycle_mode) {
             mode = (PaCliRenderMode)(((int)mode + 1) % 3);
+            needs_render = 1;
         }
 
         if (auto_run || input.step_once || input.app_mask != 0u) {
             pa_app_set_input(&app, input.app_mask);
             pa_app_update(&app);
+            needs_render = 1;
         } else {
             pa_app_set_input(&app, 0u);
         }
@@ -151,7 +158,7 @@ int main(void) {
         if (app.quit_requested) {
             break;
         }
-        pa_cli_sleep_ms(sleep_ms);
+        pa_cli_sleep_ms(auto_run ? sleep_ms : 10L);
     }
 
     return 0;

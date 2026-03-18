@@ -222,65 +222,6 @@ If you only remember one thing:
 ```
 
 ================================================================
-FILE: packetcli2machine/Makefile
-================================================================
-
-```makefile
-CC ?= cc
-CFLAGS ?= -std=c11 -O2 -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=200809L -Iinclude -Ipacket/include
-
-TARGET = packet_cli
-OBJS = \
-	platform/cli/main.o \
-	src/runtime/app.o \
-	src/world_runtime/world_runtime.o \
-	src/manifestation_runtime/manifestation_runtime.o \
-	src/packet_runtime/packet_runtime.o \
-	src/ui_runtime/ui_render.o \
-	src/rendering/render_primitives.o \
-	src/rendering/font_renderer.o \
-	packet/src/render_cli.o
-
-.DEFAULT_GOAL := $(TARGET)
-
-$(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $@
-
-platform/cli/main.o: platform/cli/main.c packet/include/packet/core.h packet/include/packet/render_cli.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/runtime/app.o: src/runtime/app.c include/packet_adventure/app.h include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h include/packet_adventure/font_renderer.h include/packet_adventure/runtime_internal.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/world_runtime/world_runtime.o: src/world_runtime/world_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/manifestation_runtime/manifestation_runtime.o: src/manifestation_runtime/manifestation_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/packet_runtime/packet_runtime.o: src/packet_runtime/packet_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/ui_runtime/ui_render.o: src/ui_runtime/ui_render.c include/packet_adventure/ui_render.h include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/rendering/render_primitives.o: src/rendering/render_primitives.c include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/rendering/font_renderer.o: src/rendering/font_renderer.c include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h include/packet_adventure/font_renderer.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-packet/src/render_cli.o: packet/src/render_cli.c packet/include/packet/render_cli.h packet/include/packet/core.h include/packet_adventure/runtime_internal.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-.PHONY: clean
-
-clean:
-	rm -f $(TARGET) $(OBJS)
-
-```
-
-================================================================
 FILE: packetcli2machine/packet_machine_render_layer.md
 ================================================================
 
@@ -489,6 +430,65 @@ It is the first explicit machine-facing render/entity in the project.
 ```
 
 ================================================================
+FILE: packetcli2machine/Makefile
+================================================================
+
+```makefile
+CC ?= cc
+CFLAGS ?= -std=c11 -O2 -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=200809L -Iinclude -Ipacket/include
+
+TARGET = packet_cli
+OBJS = \
+	platform/cli/main.o \
+	src/runtime/app.o \
+	src/world_runtime/world_runtime.o \
+	src/manifestation_runtime/manifestation_runtime.o \
+	src/packet_runtime/packet_runtime.o \
+	src/ui_runtime/ui_render.o \
+	src/rendering/render_primitives.o \
+	src/rendering/font_renderer.o \
+	packet/src/render_cli.o
+
+.DEFAULT_GOAL := $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(OBJS) -o $@
+
+platform/cli/main.o: platform/cli/main.c packet/include/packet/core.h packet/include/packet/render_cli.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/runtime/app.o: src/runtime/app.c include/packet_adventure/app.h include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h include/packet_adventure/font_renderer.h include/packet_adventure/runtime_internal.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/world_runtime/world_runtime.o: src/world_runtime/world_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/manifestation_runtime/manifestation_runtime.o: src/manifestation_runtime/manifestation_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/packet_runtime/packet_runtime.o: src/packet_runtime/packet_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/ui_runtime/ui_render.o: src/ui_runtime/ui_render.c include/packet_adventure/ui_render.h include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/rendering/render_primitives.o: src/rendering/render_primitives.c include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/rendering/font_renderer.o: src/rendering/font_renderer.c include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h include/packet_adventure/font_renderer.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+packet/src/render_cli.o: packet/src/render_cli.c packet/include/packet/render_cli.h packet/include/packet/core.h include/packet_adventure/runtime_internal.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+.PHONY: clean
+
+clean:
+	rm -f $(TARGET) $(OBJS)
+
+```
+
+================================================================
 FILE: packetcli2machine/packet_machine/packet_machine_render.py
 ================================================================
 
@@ -585,6 +585,12 @@ def extract_latest_snapshot(raw_text: str) -> str:
         parts = raw_text.split(CLEAR_SEQ)
         latest = parts[-1] if parts else raw_text
         latest = strip_ansi(latest).replace("\r", "")
+
+    header = "PACKET DEV CLI"
+    header_index = latest.find(header)
+    if header_index >= 0:
+        latest = latest[header_index:]
+
     return latest.strip("\n")
 
 
@@ -715,6 +721,143 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+```
+
+================================================================
+FILE: packetcli2machine/packet/include/packet/core.h
+================================================================
+
+```c
+#ifndef PACKET_CORE_H
+#define PACKET_CORE_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#define PA_VIEW_COLS 15
+#define PA_VIEW_ROWS 15
+#define PA_WORLD_COLS 256
+#define PA_WORLD_ROWS 192
+
+enum {
+    PA_INPUT_UP = 1u << 0,
+    PA_INPUT_DOWN = 1u << 1,
+    PA_INPUT_LEFT = 1u << 2,
+    PA_INPUT_RIGHT = 1u << 3,
+    PA_INPUT_PARAM_DEC = 1u << 4,
+    PA_INPUT_PARAM_INC = 1u << 5,
+    PA_INPUT_MAP_TOGGLE = 1u << 6,
+    PA_INPUT_REGEN = 1u << 7,
+    PA_INPUT_SW_TOGGLE = 1u << 8,
+    PA_INPUT_SW_STEP = 1u << 9,
+    PA_INPUT_SW_SLOWER = 1u << 10,
+    PA_INPUT_SW_FASTER = 1u << 11,
+};
+
+typedef enum {
+    PA_TILE_VOID = 0,
+    PA_TILE_WALL = 1,
+    PA_TILE_FLOOR = 2,
+} PaTileType;
+
+typedef enum {
+    PA_ZONE_CALM = 0,
+    PA_ZONE_BOUNDARY = 1,
+    PA_ZONE_CHAOS = 2,
+} PaZoneType;
+
+typedef enum {
+    PA_OP_FLOW = 0,
+    PA_OP_CONNECT = 1,
+    PA_OP_DISSOLVE = 2,
+    PA_OP_ENCODE = 3,
+    PA_OP_CHOOSE = 4,
+    PA_OP_OBSERVE = 5,
+    PA_OP_CYCLE = 6,
+    PA_OP_LOGIC = 7,
+    PA_OP_RUNTIME = 8,
+    PA_OP_MANIFEST = 9,
+    PA_OP_COUNT = 10
+} PaOperatorType;
+
+typedef struct {
+    uint8_t world_strength;
+    uint8_t process_strength;
+    int8_t stability_bias;
+    int8_t pressure_bias;
+} PaOperatorProfile;
+
+typedef struct {
+    uint32_t frame;
+    uint32_t sweep_frame;
+    uint32_t input_mask;
+    uint32_t prev_input_mask;
+    uint32_t move_cooldown;
+    uint32_t param_cooldown;
+    uint32_t entropy;
+    uint32_t topology_revision;
+    uint32_t world_seed;
+    uint32_t regen_cycle_seed;
+    uint32_t sw_cycle_count;
+    uint32_t layer_index;
+    uint32_t debug_regen_begin_count;
+    uint32_t debug_regen_end_count;
+    uint32_t debug_regen_columns;
+    uint32_t debug_regen_changed_cells;
+    uint32_t debug_regen_last_changed_cells;
+    uint32_t debug_world_hash;
+    uint8_t sweep_speed;
+    uint8_t debug_regen_last_column;
+    int packet_x;
+    int packet_y;
+    int transition_x;
+    int transition_y;
+    int packet_field_radius;
+    bool map_open;
+    bool sweep_paused;
+    bool transition_reached;
+    bool quit_requested;
+    uint8_t tiles[PA_WORLD_ROWS][PA_WORLD_COLS];
+    uint8_t zones[PA_WORLD_ROWS][PA_WORLD_COLS];
+    uint8_t operators[PA_WORLD_ROWS][PA_WORLD_COLS];
+    uint16_t base_operator_area[PA_OP_COUNT];
+    uint8_t local_entropy_rate[PA_WORLD_ROWS][PA_WORLD_COLS];
+    uint8_t local_density[PA_WORLD_ROWS][PA_WORLD_COLS];
+    bool manifested[PA_WORLD_ROWS][PA_WORLD_COLS];
+    bool calm[PA_WORLD_ROWS][PA_WORLD_COLS];
+} PaApp;
+
+void pa_app_init(PaApp *app);
+void pa_app_set_input(PaApp *app, uint32_t input_mask);
+void pa_app_update(PaApp *app);
+const char *pa_app_build_id(void);
+
+#endif
+
+```
+
+================================================================
+FILE: packetcli2machine/packet/include/packet/render_cli.h
+================================================================
+
+```c
+#ifndef PACKET_RENDER_CLI_H
+#define PACKET_RENDER_CLI_H
+
+#include <stdio.h>
+
+#include "packet/core.h"
+
+typedef enum {
+    PA_CLI_MODE_GLYPH = 0,
+    PA_CLI_MODE_DENSITY = 1,
+    PA_CLI_MODE_COMPOSITE = 2
+} PaCliRenderMode;
+
+void pa_cli_render_frame(FILE *out, const PaApp *app, PaCliRenderMode mode, int auto_run);
+
+#endif
 
 ```
 
@@ -920,143 +1063,6 @@ void pa_ui_render_debug_map(PaSurface *surface, const PaApp *app);
 ```
 
 ================================================================
-FILE: packetcli2machine/packet/include/packet/core.h
-================================================================
-
-```c
-#ifndef PACKET_CORE_H
-#define PACKET_CORE_H
-
-#include <stdbool.h>
-#include <stdint.h>
-
-#define PA_VIEW_COLS 15
-#define PA_VIEW_ROWS 15
-#define PA_WORLD_COLS 256
-#define PA_WORLD_ROWS 192
-
-enum {
-    PA_INPUT_UP = 1u << 0,
-    PA_INPUT_DOWN = 1u << 1,
-    PA_INPUT_LEFT = 1u << 2,
-    PA_INPUT_RIGHT = 1u << 3,
-    PA_INPUT_PARAM_DEC = 1u << 4,
-    PA_INPUT_PARAM_INC = 1u << 5,
-    PA_INPUT_MAP_TOGGLE = 1u << 6,
-    PA_INPUT_REGEN = 1u << 7,
-    PA_INPUT_SW_TOGGLE = 1u << 8,
-    PA_INPUT_SW_STEP = 1u << 9,
-    PA_INPUT_SW_SLOWER = 1u << 10,
-    PA_INPUT_SW_FASTER = 1u << 11,
-};
-
-typedef enum {
-    PA_TILE_VOID = 0,
-    PA_TILE_WALL = 1,
-    PA_TILE_FLOOR = 2,
-} PaTileType;
-
-typedef enum {
-    PA_ZONE_CALM = 0,
-    PA_ZONE_BOUNDARY = 1,
-    PA_ZONE_CHAOS = 2,
-} PaZoneType;
-
-typedef enum {
-    PA_OP_FLOW = 0,
-    PA_OP_CONNECT = 1,
-    PA_OP_DISSOLVE = 2,
-    PA_OP_ENCODE = 3,
-    PA_OP_CHOOSE = 4,
-    PA_OP_OBSERVE = 5,
-    PA_OP_CYCLE = 6,
-    PA_OP_LOGIC = 7,
-    PA_OP_RUNTIME = 8,
-    PA_OP_MANIFEST = 9,
-    PA_OP_COUNT = 10
-} PaOperatorType;
-
-typedef struct {
-    uint8_t world_strength;
-    uint8_t process_strength;
-    int8_t stability_bias;
-    int8_t pressure_bias;
-} PaOperatorProfile;
-
-typedef struct {
-    uint32_t frame;
-    uint32_t sweep_frame;
-    uint32_t input_mask;
-    uint32_t prev_input_mask;
-    uint32_t move_cooldown;
-    uint32_t param_cooldown;
-    uint32_t entropy;
-    uint32_t topology_revision;
-    uint32_t world_seed;
-    uint32_t regen_cycle_seed;
-    uint32_t sw_cycle_count;
-    uint32_t layer_index;
-    uint32_t debug_regen_begin_count;
-    uint32_t debug_regen_end_count;
-    uint32_t debug_regen_columns;
-    uint32_t debug_regen_changed_cells;
-    uint32_t debug_regen_last_changed_cells;
-    uint32_t debug_world_hash;
-    uint8_t sweep_speed;
-    uint8_t debug_regen_last_column;
-    int packet_x;
-    int packet_y;
-    int transition_x;
-    int transition_y;
-    int packet_field_radius;
-    bool map_open;
-    bool sweep_paused;
-    bool transition_reached;
-    bool quit_requested;
-    uint8_t tiles[PA_WORLD_ROWS][PA_WORLD_COLS];
-    uint8_t zones[PA_WORLD_ROWS][PA_WORLD_COLS];
-    uint8_t operators[PA_WORLD_ROWS][PA_WORLD_COLS];
-    uint16_t base_operator_area[PA_OP_COUNT];
-    uint8_t local_entropy_rate[PA_WORLD_ROWS][PA_WORLD_COLS];
-    uint8_t local_density[PA_WORLD_ROWS][PA_WORLD_COLS];
-    bool manifested[PA_WORLD_ROWS][PA_WORLD_COLS];
-    bool calm[PA_WORLD_ROWS][PA_WORLD_COLS];
-} PaApp;
-
-void pa_app_init(PaApp *app);
-void pa_app_set_input(PaApp *app, uint32_t input_mask);
-void pa_app_update(PaApp *app);
-const char *pa_app_build_id(void);
-
-#endif
-
-```
-
-================================================================
-FILE: packetcli2machine/packet/include/packet/render_cli.h
-================================================================
-
-```c
-#ifndef PACKET_RENDER_CLI_H
-#define PACKET_RENDER_CLI_H
-
-#include <stdio.h>
-
-#include "packet/core.h"
-
-typedef enum {
-    PA_CLI_MODE_GLYPH = 0,
-    PA_CLI_MODE_DENSITY = 1,
-    PA_CLI_MODE_COMPOSITE = 2
-} PaCliRenderMode;
-
-void pa_cli_render_frame(FILE *out, const PaApp *app, PaCliRenderMode mode, int auto_run);
-
-#endif
-
-```
-
-================================================================
 FILE: packetcli2machine/platform/cli/main.c
 ================================================================
 
@@ -1190,9 +1196,9 @@ int main(void) {
         PaCliInput input;
 
         if (needs_render) {
-            pa_cli_render_frame(stdout, &app, mode, auto_run);
             fprintf(stdout, "controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed\n");
             fprintf(stdout, "dev: space auto-run, n single tick, v cycle view, q/x quit\n");
+            pa_cli_render_frame(stdout, &app, mode, auto_run);
             needs_render = 0;
         }
 
@@ -4090,29 +4096,6 @@ view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 01: n ===
-controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
-dev: space auto-run, n single tick, v cycle view, q/x quit
-PACKET DEV CLI  frame=0 sweep=0 sw=live field=2 mode=composite run=step turbulence>=120
-packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
-c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
-c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
-c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
-c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
-c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
-c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
-c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
-c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
-c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
-c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
-c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
-c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
-c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
-c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
-c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
-view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
-legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
-
-=== SNAPSHOT 02: n ===
 PACKET DEV CLI  frame=1 sweep=1 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -4133,9 +4116,7 @@ c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
 view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
-=== SNAPSHOT 03: n ===
-controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
-dev: space auto-run, n single tick, v cycle view, q/x quit
+=== SNAPSHOT 02: n ===
 PACKET DEV CLI  frame=2 sweep=2 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -4156,7 +4137,7 @@ c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
 view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
-=== SNAPSHOT 04: n ===
+=== SNAPSHOT 03: n ===
 PACKET DEV CLI  frame=3 sweep=3 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -4177,7 +4158,7 @@ c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
 view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
-=== SNAPSHOT 05: n ===
+=== SNAPSHOT 04: n ===
 PACKET DEV CLI  frame=4 sweep=4 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -4198,7 +4179,7 @@ c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
 view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
-=== SNAPSHOT 06: QUIT ===
+=== SNAPSHOT 05: n ===
 PACKET DEV CLI  frame=5 sweep=5 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -4218,6 +4199,9 @@ c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
 view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
+
+=== SNAPSHOT 06: QUIT ===
+
 
 
 ```

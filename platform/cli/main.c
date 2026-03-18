@@ -127,9 +127,9 @@ int main(void) {
         PaCliInput input;
 
         if (needs_render) {
-            pa_cli_render_frame(stdout, &app, mode, auto_run);
             fprintf(stdout, "controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed\n");
             fprintf(stdout, "dev: space auto-run, n single tick, v cycle view, q/x quit\n");
+            pa_cli_render_frame(stdout, &app, mode, auto_run);
             needs_render = 0;
         }
 

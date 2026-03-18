@@ -90,6 +90,12 @@ def extract_latest_snapshot(raw_text: str) -> str:
         parts = raw_text.split(CLEAR_SEQ)
         latest = parts[-1] if parts else raw_text
         latest = strip_ansi(latest).replace("\r", "")
+
+    header = "PACKET DEV CLI"
+    header_index = latest.find(header)
+    if header_index >= 0:
+        latest = latest[header_index:]
+
     return latest.strip("\n")
 
 

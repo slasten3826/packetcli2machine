@@ -460,29 +460,6 @@ view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 01: n ===
-controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
-dev: space auto-run, n single tick, v cycle view, q/x quit
-PACKET DEV CLI  frame=0 sweep=0 sw=live field=2 mode=composite run=step turbulence>=120
-packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
-c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
-c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
-c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
-c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
-c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
-c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
-c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
-c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
-c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
-c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
-c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
-c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
-c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
-c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
-c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
-view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
-legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
-
-=== SNAPSHOT 02: n ===
 PACKET DEV CLI  frame=1 sweep=1 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -503,9 +480,7 @@ c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
 view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
-=== SNAPSHOT 03: n ===
-controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
-dev: space auto-run, n single tick, v cycle view, q/x quit
+=== SNAPSHOT 02: n ===
 PACKET DEV CLI  frame=2 sweep=2 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -526,7 +501,7 @@ c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
 view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
-=== SNAPSHOT 04: n ===
+=== SNAPSHOT 03: n ===
 PACKET DEV CLI  frame=3 sweep=3 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -547,7 +522,7 @@ c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
 view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
-=== SNAPSHOT 05: n ===
+=== SNAPSHOT 04: n ===
 PACKET DEV CLI  frame=4 sweep=4 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -568,7 +543,7 @@ c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
 view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
-=== SNAPSHOT 06: QUIT ===
+=== SNAPSHOT 05: n ===
 PACKET DEV CLI  frame=5 sweep=5 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -589,65 +564,9 @@ c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
 view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
+=== SNAPSHOT 06: QUIT ===
 
-```
 
-================================================================
-FILE: packetcli2machine/Makefile
-================================================================
-
-```makefile
-CC ?= cc
-CFLAGS ?= -std=c11 -O2 -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=200809L -Iinclude -Ipacket/include
-
-TARGET = packet_cli
-OBJS = \
-	platform/cli/main.o \
-	src/runtime/app.o \
-	src/world_runtime/world_runtime.o \
-	src/manifestation_runtime/manifestation_runtime.o \
-	src/packet_runtime/packet_runtime.o \
-	src/ui_runtime/ui_render.o \
-	src/rendering/render_primitives.o \
-	src/rendering/font_renderer.o \
-	packet/src/render_cli.o
-
-.DEFAULT_GOAL := $(TARGET)
-
-$(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $@
-
-platform/cli/main.o: platform/cli/main.c packet/include/packet/core.h packet/include/packet/render_cli.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/runtime/app.o: src/runtime/app.c include/packet_adventure/app.h include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h include/packet_adventure/font_renderer.h include/packet_adventure/runtime_internal.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/world_runtime/world_runtime.o: src/world_runtime/world_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/manifestation_runtime/manifestation_runtime.o: src/manifestation_runtime/manifestation_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/packet_runtime/packet_runtime.o: src/packet_runtime/packet_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/ui_runtime/ui_render.o: src/ui_runtime/ui_render.c include/packet_adventure/ui_render.h include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/rendering/render_primitives.o: src/rendering/render_primitives.c include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-src/rendering/font_renderer.o: src/rendering/font_renderer.c include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h include/packet_adventure/font_renderer.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-packet/src/render_cli.o: packet/src/render_cli.c packet/include/packet/render_cli.h packet/include/packet/core.h include/packet_adventure/runtime_internal.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-.PHONY: clean
-
-clean:
-	rm -f $(TARGET) $(OBJS)
 
 ```
 
@@ -748,6 +667,12 @@ def extract_latest_snapshot(raw_text: str) -> str:
         parts = raw_text.split(CLEAR_SEQ)
         latest = parts[-1] if parts else raw_text
         latest = strip_ansi(latest).replace("\r", "")
+
+    header = "PACKET DEV CLI"
+    header_index = latest.find(header)
+    if header_index >= 0:
+        latest = latest[header_index:]
+
     return latest.strip("\n")
 
 
@@ -1313,9 +1238,9 @@ int main(void) {
         PaCliInput input;
 
         if (needs_render) {
-            pa_cli_render_frame(stdout, &app, mode, auto_run);
             fprintf(stdout, "controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed\n");
             fprintf(stdout, "dev: space auto-run, n single tick, v cycle view, q/x quit\n");
+            pa_cli_render_frame(stdout, &app, mode, auto_run);
             needs_render = 0;
         }
 
