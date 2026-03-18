@@ -1,0 +1,1348 @@
+# PACKETCLI2MACHINE SINGLE FILE
+
+This is a single-file machine bundle for Packet CLI.
+Read sections in order. Code blocks and docs are embedded below.
+
+================================================================
+FILE: packetcli2machine/MACHINE_INSTRUCTION.md
+================================================================
+
+```text
+# Machine Instruction
+
+## What this folder is
+
+This folder is a standalone machine-facing Packet kit.
+
+It exists so another machine can:
+
+- build a real `packet_cli`
+- run a real Packet runtime slice
+- observe runtime behavior through a machine-facing render layer
+
+This is not the whole project.
+This is not the whole game.
+This is not a fake stub.
+
+It is a minimal real Packet CLI slice plus a machine-facing observation layer.
+
+## What to read first
+
+Read in this order:
+
+1. `README.md`
+2. `packet_machine_render_layer.md`
+3. `packet_machine/README.md`
+4. `packet_machine_render_report.txt`
+
+Then inspect source if needed:
+
+- `packet/include/packet/core.h`
+- `packet/include/packet/render_cli.h`
+- `packet/src/render_cli.c`
+- `platform/cli/main.c`
+- `include/packet_adventure/runtime_internal.h`
+
+## What to run
+
+If you want to build from source:
+
+```bash
+cd packetcli2machine
+make
+```
+
+If you want the machine-facing path:
+
+```bash
+cd packetcli2machine
+python3 packet_machine/packet_machine_render.py
+```
+
+This writes:
+
+- `packet_machine_render_report.txt`
+
+## Important note about `packet_cli`
+
+`./packet_cli` expects a real terminal/TTY.
+
+So if you are another machine, agent, or automated tool,
+the preferred entrypoint is:
+
+```bash
+python3 packet_machine/packet_machine_render.py
+```
+
+That script:
+
+- launches `packet_cli` through a PTY
+- sends scripted commands
+- captures clean textual snapshots
+- writes one report file
+
+## Default scripted run
+
+The default command script is:
+
+```text
+n,v,SPACE,n,w,n,QUIT
+```
+
+Meaning:
+
+- `n` = one tick
+- `v` = change render mode
+- `SPACE` = toggle auto-run
+- `w` = move packet up
+- `QUIT` = exit
+
+## What the machine should evaluate
+
+After reading the report and code, answer:
+
+1. Does this already behave like a real machine-facing render layer?
+2. What is already strong here as a separate entity?
+3. What is still missing before another machine can truly play Packet instead of only observing it?
+
+## Short summary
+
+If you only remember one thing:
+
+> Use `packet_machine/packet_machine_render.py`, not raw `packet_cli`.
+
+```
+
+================================================================
+FILE: packetcli2machine/README.md
+================================================================
+
+```text
+# packetcli2machine
+
+## What this is
+
+This is a machine-facing Packet kit.
+
+Its purpose is not to expose the whole project.
+Its purpose is to let another machine:
+
+- build `packet_cli`
+- run `packet_cli`
+- run machine render over it
+- observe real Packet runtime behavior
+
+## What is included
+
+- minimal real source slice needed to build `packet_cli`
+- `packet_machine/packet_machine_render.py`
+- one sample machine render report
+- one prebuilt `packet_cli` binary if available on the source machine
+
+## Fast path
+
+If the bundled binary works on the target machine:
+
+```bash
+cd packetcli2machine
+./packet_cli
+```
+
+Machine-facing report:
+
+```bash
+cd packetcli2machine
+python3 packet_machine/packet_machine_render.py
+```
+
+## Build from source
+
+```bash
+cd packetcli2machine
+make
+./packet_cli
+```
+
+## Why this matters
+
+This kit is meant to let another machine do more than read code and docs.
+
+It can:
+
+- run the runtime
+- send scripted input
+- inspect state snapshots
+
+That is the first practical step toward machine-visible Packet behavior.
+
+```
+
+================================================================
+FILE: packetcli2machine/packet_machine_render_layer.md
+================================================================
+
+```text
+# Packet Machine Render Layer
+
+## Status
+
+Working hypothesis.
+First implementation pass follows immediately after this document.
+
+## Why this exists
+
+`packet_cli` already gave us a second manifestation of `Packet`:
+
+- not PSP
+- not SDL
+- not visual presentation for players
+
+It gave us a text manifestation of the substrate.
+
+Then `packet_cli_harness.py` added one more step:
+
+- not human live play
+- but scripted observation
+- and snapshot capture for another machine
+
+At that point this stopped being "just a helper script".
+
+It became a new kind of render.
+
+## Core claim
+
+There is a new manifestation layer in the project:
+
+- human render
+- machine render
+
+Human render exists to be read by a person.
+Machine render exists to be read by another runtime, agent, or LLM.
+
+This is still render, because it does not define the world law itself.
+It defines how world law becomes observable.
+
+## What machine render should do
+
+Machine render should:
+
+- launch a real Packet runtime
+- drive it through repeatable scripted input
+- capture stable state snapshots
+- expose enough state for another machine to reason about behavior
+- stay close to the real runtime, not a fake stub
+
+## What machine render should not do
+
+Machine render should not:
+
+- invent a fake Packet world
+- replace the real runtime with a toy simulation
+- become a separate gameplay fork
+- duplicate the whole engine in Python
+
+The point is not "machine-friendly fake Packet".
+The point is "machine-friendly access to real Packet".
+
+## Current first proof
+
+Current proof path already exists:
+
+- `packet_cli`
+- `packet/src/render_cli.c`
+- `platform/cli/main.c`
+- `scripts/packet_cli_harness.py`
+
+This is enough to prove the basic claim:
+
+> Another machine can already observe Packet indirectly through a scripted textual manifestation.
+
+## Next extraction step
+
+We now want to make this explicit.
+
+Not:
+
+- random script in `scripts/`
+
+But:
+
+- an explicit machine-facing layer
+- with its own README
+- with its own entrypoint
+- with its own purpose
+
+## Expected first shape
+
+First shape should stay minimal:
+
+- `packet_machine/README.md`
+- `packet_machine/packet_machine_render.py`
+
+This layer can start as a thin wrapper over existing CLI manifestation.
+
+That is acceptable.
+
+The important step is not maximal power.
+The important step is architectural recognition:
+
+> machine-facing manifestation is now a real project entity
+
+## Verification
+
+This extraction pass is successful when:
+
+- the new machine render entrypoint works
+- it can generate a report from a real `packet_cli` run
+- the layer can be pointed to as a distinct entity in the repo
+
+## Long-term implication
+
+If this path holds,
+then other machines do not need to only read code and docs.
+
+They can:
+
+- read docs
+- inspect code
+- run machine render
+- observe Packet behavior directly
+
+That would make multi-machine development much more practical.
+
+```
+
+================================================================
+FILE: packetcli2machine/packet_machine/README.md
+================================================================
+
+```text
+# Packet Machine
+
+## What this is
+
+`packet_machine` is the first explicit machine-facing manifestation layer for `Packet`.
+
+It does not replace:
+
+- `Packet`
+- `Packet Adventure`
+- `packet_cli`
+
+It sits beside them.
+
+## Purpose
+
+This layer exists so another machine can:
+
+- launch a real Packet runtime
+- send scripted input
+- capture clean textual state snapshots
+- reason about real Packet behavior
+
+## Current first implementation
+
+Current implementation is a machine render wrapper over `packet_cli`.
+
+That means:
+
+- runtime stays real
+- presentation stays textual
+- observation becomes machine-friendly
+
+## Why this matters
+
+Without this layer,
+another machine mostly reads:
+
+- code
+- docs
+- screenshots
+- reports
+
+With this layer,
+another machine can also observe:
+
+- repeatable Packet runtime behavior
+
+## First entrypoint
+
+Use:
+
+```bash
+cd /home/slasten/dev/packet3
+make packet_cli
+python3 packet_machine/packet_machine_render.py
+```
+
+This writes a plain-text report containing a startup snapshot and one snapshot after each scripted command.
+
+## Scope
+
+This is not yet a full standalone Packet runtime export.
+
+It is the first explicit machine-facing render/entity in the project.
+
+```
+
+================================================================
+FILE: packetcli2machine/packet_machine_render_report.txt
+================================================================
+
+```text
+PACKET_MACHINE_RENDER_REPORT
+binary: ./packet_cli
+commands: n,n,n,n,n,QUIT
+snapshots: 7
+
+=== SNAPSHOT 00: startup ===
+PACKET DEV CLI  frame=0 sweep=0 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2
+ 2 2 3 3 3 3 3@3 3 3 3 3 3 2  | 2
+ 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+
+=== SNAPSHOT 01: n ===
+PACKET DEV CLI  frame=1 sweep=1 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+
+=== SNAPSHOT 02: n ===
+PACKET DEV CLI  frame=2 sweep=2 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+
+=== SNAPSHOT 03: n ===
+PACKET DEV CLI  frame=3 sweep=3 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+
+=== SNAPSHOT 04: n ===
+PACKET DEV CLI  frame=4 sweep=4 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+
+=== SNAPSHOT 05: n ===
+PACKET DEV CLI  frame=5 sweep=5 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+
+=== SNAPSHOT 06: QUIT ===
+PACKET DEV CLI  frame=5 sweep=5 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+view: latent=212 manifest=12 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
+controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
+dev: space auto-run, n single tick, v cycle view, q/x quit
+
+
+```
+
+================================================================
+FILE: packetcli2machine/Makefile
+================================================================
+
+```makefile
+CC ?= cc
+CFLAGS ?= -std=c11 -O2 -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=200809L -Iinclude -Ipacket/include
+
+TARGET = packet_cli
+OBJS = \
+	platform/cli/main.o \
+	src/runtime/app.o \
+	src/world_runtime/world_runtime.o \
+	src/manifestation_runtime/manifestation_runtime.o \
+	src/packet_runtime/packet_runtime.o \
+	src/ui_runtime/ui_render.o \
+	src/rendering/render_primitives.o \
+	src/rendering/font_renderer.o \
+	packet/src/render_cli.o
+
+.DEFAULT_GOAL := $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(OBJS) -o $@
+
+platform/cli/main.o: platform/cli/main.c packet/include/packet/core.h packet/include/packet/render_cli.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/runtime/app.o: src/runtime/app.c include/packet_adventure/app.h include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h include/packet_adventure/font_renderer.h include/packet_adventure/runtime_internal.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/world_runtime/world_runtime.o: src/world_runtime/world_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/manifestation_runtime/manifestation_runtime.o: src/manifestation_runtime/manifestation_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/packet_runtime/packet_runtime.o: src/packet_runtime/packet_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/ui_runtime/ui_render.o: src/ui_runtime/ui_render.c include/packet_adventure/ui_render.h include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/rendering/render_primitives.o: src/rendering/render_primitives.c include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/rendering/font_renderer.o: src/rendering/font_renderer.c include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h include/packet_adventure/font_renderer.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+packet/src/render_cli.o: packet/src/render_cli.c packet/include/packet/render_cli.h packet/include/packet/core.h include/packet_adventure/runtime_internal.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+.PHONY: clean
+
+clean:
+	rm -f $(TARGET) $(OBJS)
+
+```
+
+================================================================
+FILE: packetcli2machine/packet_machine/packet_machine_render.py
+================================================================
+
+```python
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import os
+import pty
+import select
+import subprocess
+import time
+from pathlib import Path
+
+
+CLEAR_SEQ = "\x1b[H\x1b[2J"
+FRAME_END = "---PACKET-CLI-FRAME-END---"
+DEFAULT_BINARY = "./packet_cli"
+DEFAULT_COMMANDS = "n,v,SPACE,n,w,n,QUIT"
+
+
+def strip_ansi(text: str) -> str:
+    out: list[str] = []
+    i = 0
+    n = len(text)
+
+    while i < n:
+        ch = text[i]
+        if ch == "\x1b":
+            i += 1
+            if i < n and text[i] == "[":
+                i += 1
+                while i < n and not ("@" <= text[i] <= "~"):
+                    i += 1
+                if i < n:
+                    i += 1
+            continue
+        out.append(ch)
+        i += 1
+
+    return "".join(out)
+
+
+def token_to_chars(token: str) -> str:
+    mapping = {
+        "SPACE": " ",
+        "TAB": "\t",
+        "ENTER": "\n",
+        "QUIT": "q",
+    }
+    key = token.strip()
+    upper = key.upper()
+
+    if upper in mapping:
+        return mapping[upper]
+    if len(key) == 1:
+        return key
+    raise ValueError(f"Unsupported command token: {token}")
+
+
+def read_available(fd: int, quiet_ms: int, max_ms: int) -> str:
+    chunks: list[bytes] = []
+    deadline = time.time() + (quiet_ms / 1000.0)
+    hard_deadline = time.time() + (max_ms / 1000.0)
+
+    while True:
+        if time.time() >= hard_deadline:
+            break
+        timeout = max(0.0, deadline - time.time())
+        ready, _, _ = select.select([fd], [], [], timeout)
+        if not ready:
+            break
+        try:
+            data = os.read(fd, 65536)
+        except OSError:
+            break
+        if not data:
+            break
+        chunks.append(data)
+        deadline = time.time() + (quiet_ms / 1000.0)
+
+    return b"".join(chunks).decode("utf-8", errors="replace")
+
+
+def extract_latest_snapshot(raw_text: str) -> str:
+    clean = strip_ansi(raw_text).replace("\r", "")
+    if FRAME_END in clean:
+        parts = clean.split(FRAME_END)
+        latest = parts[-2] if len(parts) >= 2 else parts[-1]
+    else:
+        parts = raw_text.split(CLEAR_SEQ)
+        latest = parts[-1] if parts else raw_text
+        latest = strip_ansi(latest).replace("\r", "")
+    return latest.strip("\n")
+
+
+def write_report(
+    out_path: Path,
+    binary: str,
+    commands: list[str],
+    snapshots: list[tuple[str, str]],
+) -> None:
+    with out_path.open("w", encoding="utf-8") as f:
+        f.write("PACKET_MACHINE_RENDER_REPORT\n")
+        f.write(f"binary: {binary}\n")
+        f.write(f"commands: {','.join(commands)}\n")
+        f.write(f"snapshots: {len(snapshots)}\n\n")
+
+        for index, (label, snap) in enumerate(snapshots):
+            f.write(f"=== SNAPSHOT {index:02d}: {label} ===\n")
+            f.write(snap)
+            f.write("\n\n")
+
+
+def run_machine_render(
+    binary: str,
+    commands: list[str],
+    startup_ms: int,
+    between_ms: int,
+    max_read_ms: int,
+) -> list[tuple[str, str]]:
+    master_fd, slave_fd = pty.openpty()
+    proc = subprocess.Popen(
+        [binary],
+        stdin=slave_fd,
+        stdout=slave_fd,
+        stderr=slave_fd,
+        close_fds=True,
+    )
+    os.close(slave_fd)
+
+    snapshots: list[tuple[str, str]] = []
+
+    try:
+        initial_raw = read_available(master_fd, startup_ms, max_read_ms)
+        snapshots.append(("startup", extract_latest_snapshot(initial_raw)))
+
+        for token in commands:
+            chars = token_to_chars(token)
+            os.write(master_fd, chars.encode("utf-8"))
+            raw = read_available(master_fd, between_ms, max_read_ms)
+            snapshots.append((token, extract_latest_snapshot(raw)))
+            if token.upper() == "QUIT":
+                break
+
+        try:
+            proc.wait(timeout=1.0)
+        except subprocess.TimeoutExpired:
+            proc.terminate()
+            try:
+                proc.wait(timeout=1.0)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=1.0)
+    finally:
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass
+
+    return snapshots
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Machine-facing render for Packet via packet_cli PTY snapshots."
+    )
+    parser.add_argument(
+        "--binary",
+        default=DEFAULT_BINARY,
+        help="Path to packet_cli binary. Default: ./packet_cli",
+    )
+    parser.add_argument(
+        "--commands",
+        default=DEFAULT_COMMANDS,
+        help="Comma-separated command tokens. Supports single chars plus SPACE, TAB, ENTER, QUIT.",
+    )
+    parser.add_argument(
+        "--startup-ms",
+        type=int,
+        default=150,
+        help="Initial quiet read window after startup.",
+    )
+    parser.add_argument(
+        "--between-ms",
+        type=int,
+        default=180,
+        help="Quiet read window after each command.",
+    )
+    parser.add_argument(
+        "--max-read-ms",
+        type=int,
+        default=600,
+        help="Hard cap for one read window, useful when scripted commands enable auto-run.",
+    )
+    parser.add_argument(
+        "--output",
+        default="packet_machine_render_report.txt",
+        help="Where to write the final report.",
+    )
+    args = parser.parse_args()
+
+    commands = [token.strip() for token in args.commands.split(",") if token.strip()]
+    snapshots = run_machine_render(
+        binary=args.binary,
+        commands=commands,
+        startup_ms=args.startup_ms,
+        between_ms=args.between_ms,
+        max_read_ms=args.max_read_ms,
+    )
+    out_path = Path(args.output)
+    write_report(out_path, args.binary, commands, snapshots)
+    print(f"Wrote {out_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+```
+
+================================================================
+FILE: packetcli2machine/packet/include/packet/core.h
+================================================================
+
+```c
+#ifndef PACKET_CORE_H
+#define PACKET_CORE_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#define PA_VIEW_COLS 15
+#define PA_VIEW_ROWS 15
+#define PA_WORLD_COLS 256
+#define PA_WORLD_ROWS 192
+
+enum {
+    PA_INPUT_UP = 1u << 0,
+    PA_INPUT_DOWN = 1u << 1,
+    PA_INPUT_LEFT = 1u << 2,
+    PA_INPUT_RIGHT = 1u << 3,
+    PA_INPUT_PARAM_DEC = 1u << 4,
+    PA_INPUT_PARAM_INC = 1u << 5,
+    PA_INPUT_MAP_TOGGLE = 1u << 6,
+    PA_INPUT_REGEN = 1u << 7,
+    PA_INPUT_SW_TOGGLE = 1u << 8,
+    PA_INPUT_SW_STEP = 1u << 9,
+    PA_INPUT_SW_SLOWER = 1u << 10,
+    PA_INPUT_SW_FASTER = 1u << 11,
+};
+
+typedef enum {
+    PA_TILE_VOID = 0,
+    PA_TILE_WALL = 1,
+    PA_TILE_FLOOR = 2,
+} PaTileType;
+
+typedef enum {
+    PA_ZONE_CALM = 0,
+    PA_ZONE_BOUNDARY = 1,
+    PA_ZONE_CHAOS = 2,
+} PaZoneType;
+
+typedef enum {
+    PA_OP_FLOW = 0,
+    PA_OP_CONNECT = 1,
+    PA_OP_DISSOLVE = 2,
+    PA_OP_ENCODE = 3,
+    PA_OP_CHOOSE = 4,
+    PA_OP_OBSERVE = 5,
+    PA_OP_CYCLE = 6,
+    PA_OP_LOGIC = 7,
+    PA_OP_RUNTIME = 8,
+    PA_OP_MANIFEST = 9,
+    PA_OP_COUNT = 10
+} PaOperatorType;
+
+typedef struct {
+    uint8_t world_strength;
+    uint8_t process_strength;
+    int8_t stability_bias;
+    int8_t pressure_bias;
+} PaOperatorProfile;
+
+typedef struct {
+    uint32_t frame;
+    uint32_t sweep_frame;
+    uint32_t input_mask;
+    uint32_t prev_input_mask;
+    uint32_t move_cooldown;
+    uint32_t param_cooldown;
+    uint32_t entropy;
+    uint32_t topology_revision;
+    uint32_t world_seed;
+    uint32_t regen_cycle_seed;
+    uint32_t sw_cycle_count;
+    uint32_t layer_index;
+    uint32_t debug_regen_begin_count;
+    uint32_t debug_regen_end_count;
+    uint32_t debug_regen_columns;
+    uint32_t debug_regen_changed_cells;
+    uint32_t debug_regen_last_changed_cells;
+    uint32_t debug_world_hash;
+    uint8_t sweep_speed;
+    uint8_t debug_regen_last_column;
+    int packet_x;
+    int packet_y;
+    int transition_x;
+    int transition_y;
+    int packet_field_radius;
+    bool map_open;
+    bool sweep_paused;
+    bool transition_reached;
+    bool quit_requested;
+    uint8_t tiles[PA_WORLD_ROWS][PA_WORLD_COLS];
+    uint8_t zones[PA_WORLD_ROWS][PA_WORLD_COLS];
+    uint8_t operators[PA_WORLD_ROWS][PA_WORLD_COLS];
+    uint16_t base_operator_area[PA_OP_COUNT];
+    uint8_t local_entropy_rate[PA_WORLD_ROWS][PA_WORLD_COLS];
+    uint8_t local_density[PA_WORLD_ROWS][PA_WORLD_COLS];
+    bool manifested[PA_WORLD_ROWS][PA_WORLD_COLS];
+    bool calm[PA_WORLD_ROWS][PA_WORLD_COLS];
+} PaApp;
+
+void pa_app_init(PaApp *app);
+void pa_app_set_input(PaApp *app, uint32_t input_mask);
+void pa_app_update(PaApp *app);
+const char *pa_app_build_id(void);
+
+#endif
+
+```
+
+================================================================
+FILE: packetcli2machine/packet/include/packet/render_cli.h
+================================================================
+
+```c
+#ifndef PACKET_RENDER_CLI_H
+#define PACKET_RENDER_CLI_H
+
+#include <stdio.h>
+
+#include "packet/core.h"
+
+typedef enum {
+    PA_CLI_MODE_GLYPH = 0,
+    PA_CLI_MODE_DENSITY = 1,
+    PA_CLI_MODE_COMPOSITE = 2
+} PaCliRenderMode;
+
+void pa_cli_render_frame(FILE *out, const PaApp *app, PaCliRenderMode mode, int auto_run);
+
+#endif
+
+```
+
+================================================================
+FILE: packetcli2machine/packet/src/render_cli.c
+================================================================
+
+```c
+#include "packet/render_cli.h"
+
+#include <stdio.h>
+
+#include "packet_adventure/runtime_internal.h"
+
+#define PA_CLI_FRAME_END "---PACKET-CLI-FRAME-END---"
+
+static char pa_operator_glyph(PaOperatorType op, bool calm) {
+    char glyph = '?';
+
+    switch (op) {
+        case PA_OP_FLOW: glyph = 'f'; break;
+        case PA_OP_CONNECT: glyph = 'c'; break;
+        case PA_OP_DISSOLVE: glyph = 'd'; break;
+        case PA_OP_ENCODE: glyph = 'e'; break;
+        case PA_OP_CHOOSE: glyph = 'h'; break;
+        case PA_OP_OBSERVE: glyph = 'o'; break;
+        case PA_OP_CYCLE: glyph = 'y'; break;
+        case PA_OP_LOGIC: glyph = 'l'; break;
+        case PA_OP_RUNTIME: glyph = 'r'; break;
+        case PA_OP_MANIFEST: glyph = 'm'; break;
+        default: glyph = '?'; break;
+    }
+
+    if (calm && glyph >= 'a' && glyph <= 'z') {
+        glyph = (char)(glyph - ('a' - 'A'));
+    }
+    return glyph;
+}
+
+static char pa_density_glyph(unsigned int density, bool turbulence, bool calm) {
+    static const char k_ramp[] = " .:-=+*#%@";
+    unsigned int index = (density * 9u) / 255u;
+
+    if (calm) {
+        return 'C';
+    }
+    if (turbulence) {
+        return '!';
+    }
+    return k_ramp[index];
+}
+
+static const char *pa_cli_mode_name(PaCliRenderMode mode) {
+    switch (mode) {
+        case PA_CLI_MODE_GLYPH: return "glyph";
+        case PA_CLI_MODE_DENSITY: return "density";
+        case PA_CLI_MODE_COMPOSITE: return "composite";
+        default: return "unknown";
+    }
+}
+
+void pa_cli_render_frame(FILE *out, const PaApp *app, PaCliRenderMode mode, int auto_run) {
+    int min_x = app->packet_x - (PA_VIEW_COLS / 2);
+    int min_y = app->packet_y - (PA_VIEW_ROWS / 2);
+    unsigned int visible_manifest = 0u;
+    unsigned int visible_crystal = 0u;
+    unsigned int visible_turbulence = 0u;
+    unsigned int visible_walls = 0u;
+    unsigned int visible_latent = 0u;
+    int vy;
+
+    fprintf(out, "\x1b[H\x1b[2J");
+    fprintf(out, "PACKET DEV CLI  frame=%u sweep=%u sw=%s field=%d mode=%s run=%s turbulence>=%u\n",
+        app->frame,
+        app->sweep_frame,
+        app->sweep_paused ? "paused" : "live",
+        app->packet_field_radius,
+        pa_cli_mode_name(mode),
+        auto_run ? "auto" : "step",
+        PA_TURBULENCE_THRESHOLD);
+    fprintf(out, "packet=(%d,%d) transition=(%d,%d) layer=%u hash=%08X\n",
+        app->packet_x, app->packet_y,
+        app->transition_x, app->transition_y,
+        app->layer_index,
+        app->debug_world_hash);
+
+    for (vy = 0; vy < PA_VIEW_ROWS; ++vy) {
+        int vx;
+
+        for (vx = 0; vx < PA_VIEW_COLS; ++vx) {
+            int wx = pa_wrap_coord(min_x + vx, PA_WORLD_COLS);
+            int wy = pa_wrap_coord(min_y + vy, PA_WORLD_ROWS);
+            int mf_strength = pa_manifest_mf_strength_impl(app, wx, wy);
+            bool calm = app->calm[wy][wx];
+            bool manifested = mf_strength > 0;
+            bool turbulence = pa_manifest_cell_is_turbulence_impl(app, wx, wy);
+            unsigned int density = app->local_density[wy][wx];
+            char glyph = ' ';
+            char right = ' ';
+
+            if (wx == app->packet_x && wy == app->packet_y) {
+                glyph = '@';
+            } else if (wx == app->transition_x && wy == app->transition_y) {
+                glyph = '*';
+            } else if (app->tiles[wy][wx] == PA_TILE_WALL) {
+                glyph = '#';
+            } else if (calm) {
+                glyph = pa_operator_glyph((PaOperatorType)app->operators[wy][wx], true);
+            } else if (manifested) {
+                glyph = pa_operator_glyph((PaOperatorType)app->operators[wy][wx], false);
+            }
+
+            if (app->tiles[wy][wx] == PA_TILE_WALL) {
+                visible_walls += 1u;
+            } else if (calm) {
+                visible_crystal += 1u;
+            } else if (manifested) {
+                visible_manifest += 1u;
+                if (turbulence) {
+                    visible_turbulence += 1u;
+                }
+            } else {
+                visible_latent += 1u;
+            }
+
+            switch (mode) {
+                case PA_CLI_MODE_GLYPH:
+                    right = pa_density_glyph(density, turbulence, calm);
+                    break;
+                case PA_CLI_MODE_DENSITY:
+                    glyph = pa_density_glyph(density, turbulence, calm);
+                    right = (char)('0' + mf_strength);
+                    break;
+                case PA_CLI_MODE_COMPOSITE:
+                default:
+                    if (turbulence && glyph != '@' && glyph != '*' && glyph != '#') {
+                        glyph = '!';
+                    }
+                    right = (char)('0' + mf_strength);
+                    break;
+            }
+
+            fputc(glyph, out);
+            if (vx == PA_VIEW_COLS - 1) {
+                fprintf(out, " | ");
+            }
+            fputc(right, out);
+        }
+        fputc('\n', out);
+    }
+
+    fprintf(out, "view: latent=%u manifest=%u crystal=%u turbulence=%u walls=%u\n",
+        visible_latent,
+        visible_manifest,
+        visible_crystal,
+        visible_turbulence,
+        visible_walls);
+    fprintf(out, "legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf\n");
+    fprintf(out, "%s\n", PA_CLI_FRAME_END);
+    fflush(out);
+}
+
+```
+
+================================================================
+FILE: packetcli2machine/platform/cli/main.c
+================================================================
+
+```c
+#include <errno.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/select.h>
+#include <termios.h>
+#include <time.h>
+#include <unistd.h>
+
+#include "packet/core.h"
+#include "packet/render_cli.h"
+
+static struct termios g_cli_termios_saved;
+static int g_cli_termios_valid = 0;
+
+typedef struct {
+    uint32_t app_mask;
+    int quit_requested;
+    int auto_run_toggled;
+    int step_once;
+    int cycle_mode;
+} PaCliInput;
+
+static void pa_cli_restore_terminal(void) {
+    if (g_cli_termios_valid) {
+        tcsetattr(STDIN_FILENO, TCSANOW, &g_cli_termios_saved);
+        g_cli_termios_valid = 0;
+    }
+}
+
+static int pa_cli_setup_terminal(void) {
+    struct termios raw;
+
+    if (tcgetattr(STDIN_FILENO, &g_cli_termios_saved) != 0) {
+        return -1;
+    }
+
+    g_cli_termios_valid = 1;
+    raw = g_cli_termios_saved;
+    raw.c_lflag &= (tcflag_t)~(ICANON | ECHO);
+    raw.c_cc[VMIN] = 0;
+    raw.c_cc[VTIME] = 0;
+
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) != 0) {
+        g_cli_termios_valid = 0;
+        return -1;
+    }
+
+    atexit(pa_cli_restore_terminal);
+    return 0;
+}
+
+static PaCliInput pa_cli_poll_input(void) {
+    PaCliInput input = {0u, 0, 0, 0, 0};
+    fd_set readfds;
+    struct timeval timeout = {0, 0};
+    char ch;
+    ssize_t nread;
+
+    FD_ZERO(&readfds);
+    FD_SET(STDIN_FILENO, &readfds);
+
+    if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) <= 0) {
+        return input;
+    }
+
+    for (;;) {
+        nread = read(STDIN_FILENO, &ch, 1);
+        if (nread <= 0) {
+            if (nread < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                break;
+            }
+            break;
+        }
+
+        switch (ch) {
+            case 'w': case 'W': input.app_mask |= PA_INPUT_UP; break;
+            case 's': case 'S': input.app_mask |= PA_INPUT_DOWN; break;
+            case 'a': case 'A': input.app_mask |= PA_INPUT_LEFT; break;
+            case 'd': case 'D': input.app_mask |= PA_INPUT_RIGHT; break;
+            case 'm': case 'M': input.app_mask |= PA_INPUT_MAP_TOGGLE; break;
+            case 'r': case 'R': input.app_mask |= PA_INPUT_REGEN; break;
+            case 'f': case 'F': input.app_mask |= PA_INPUT_SW_TOGGLE; break;
+            case 'g': case 'G': input.app_mask |= PA_INPUT_SW_STEP; break;
+            case '[': input.app_mask |= PA_INPUT_SW_SLOWER; break;
+            case ']': input.app_mask |= PA_INPUT_SW_FASTER; break;
+            case '-': case '_': input.app_mask |= PA_INPUT_PARAM_DEC; break;
+            case '=': case '+': input.app_mask |= PA_INPUT_PARAM_INC; break;
+            case ' ': input.auto_run_toggled = 1; break;
+            case 'n': case 'N': input.step_once = 1; break;
+            case 'v': case 'V': input.cycle_mode = 1; break;
+            case 'x': case 'X':
+            case 'q': case 'Q':
+                input.quit_requested = 1;
+                break;
+            default:
+                break;
+        }
+    }
+
+    return input;
+}
+
+static void pa_cli_sleep_ms(long ms) {
+    struct timespec req;
+
+    req.tv_sec = ms / 1000L;
+    req.tv_nsec = (ms % 1000L) * 1000000L;
+    nanosleep(&req, NULL);
+}
+
+int main(void) {
+    PaApp app;
+    PaCliRenderMode mode = PA_CLI_MODE_COMPOSITE;
+    int auto_run = 0;
+    long sleep_ms = 120L;
+
+    pa_app_init(&app);
+
+    if (pa_cli_setup_terminal() != 0) {
+        fprintf(stderr, "cli terminal setup failed\n");
+        return 1;
+    }
+
+    for (;;) {
+        PaCliInput input;
+
+        pa_cli_render_frame(stdout, &app, mode, auto_run);
+        fprintf(stdout, "controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed\n");
+        fprintf(stdout, "dev: space auto-run, n single tick, v cycle view, q/x quit\n");
+
+        input = pa_cli_poll_input();
+        if (input.quit_requested) {
+            break;
+        }
+
+        if (input.auto_run_toggled) {
+            auto_run = !auto_run;
+        }
+        if (input.cycle_mode) {
+            mode = (PaCliRenderMode)(((int)mode + 1) % 3);
+        }
+
+        if (auto_run || input.step_once || input.app_mask != 0u) {
+            pa_app_set_input(&app, input.app_mask);
+            pa_app_update(&app);
+        } else {
+            pa_app_set_input(&app, 0u);
+        }
+
+        if (app.quit_requested) {
+            break;
+        }
+        pa_cli_sleep_ms(sleep_ms);
+    }
+
+    return 0;
+}
+
+```
+
+================================================================
+FILE: packetcli2machine/include/packet_adventure/runtime_internal.h
+================================================================
+
+```c
+#ifndef PACKET_ADVENTURE_RUNTIME_INTERNAL_H
+#define PACKET_ADVENTURE_RUNTIME_INTERNAL_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "packet/core.h"
+
+#define PA_MOVE_COOLDOWN 5u
+#define PA_PARAM_COOLDOWN 8u
+#define PA_SWEEP_PERIOD 240u
+#define PA_PW_PERIOD (PA_SWEEP_PERIOD)
+#define PA_MINIMAP_LOGICAL_W 24
+#define PA_MINIMAP_LOGICAL_H 24
+#define PA_MINIMAP_SCALE 4
+#define PA_MINIMAP_SPAN_X 48
+#define PA_MINIMAP_SPAN_Y 48
+#define PA_MANIFEST_SPAN_X 56
+#define PA_MANIFEST_SPAN_Y 40
+#define PA_TURBULENCE_THRESHOLD 120u
+
+typedef struct {
+    PaOperatorType op;
+    int x;
+    int y;
+} PaZoneCenter;
+
+typedef struct {
+    PaOperatorType op;
+    int anchor_x;
+    int anchor_y;
+    int spread_x;
+    int spread_y;
+    int copies;
+} PaRegionPlan;
+
+uint32_t pa_lcg_next(uint32_t *state);
+int pa_rand_range(uint32_t *state, int min_value, int max_value);
+int pa_clamp(int value, int min_value, int max_value);
+int pa_wrap_coord(int value, int size);
+int pa_torus_delta(int from, int to, int size);
+int pa_torus_lerp(int from, int to, int step, int steps, int size);
+uint32_t pa_chaos_seed_from_calm(const PaApp *app);
+const PaOperatorProfile *pa_operator_profile(PaOperatorType op);
+bool pa_operator_world_enabled(PaOperatorType op);
+bool pa_operator_process_enabled(PaOperatorType op);
+bool pa_operator_allowed(PaOperatorType a, PaOperatorType b);
+PaZoneType pa_operator_zone(PaOperatorType op);
+PaOperatorType pa_find_bridge_operator(PaOperatorType a, PaOperatorType b);
+int pa_pf_metric(int dx, int dy);
+void pa_select_path(PaOperatorType *ops, uint32_t *seed);
+unsigned int pa_cell_noise(int x, int y, int salt);
+void pa_add_region_seeds(PaZoneCenter *centers, int *count, const PaRegionPlan *plan, uint32_t *seed);
+
+int pa_manifest_mf_strength_impl(const PaApp *app, int x, int y);
+bool pa_manifest_cell_is_turbulence_impl(const PaApp *app, int x, int y);
+void pa_manifest_refresh_density_impl(PaApp *app);
+void pa_manifest_refresh_world_fields_impl(PaApp *app);
+void pa_manifest_refresh_density_local_impl(PaApp *app);
+void pa_manifest_refresh_world_fields_local_impl(PaApp *app);
+
+void pa_packet_adjust_field_impl(PaApp *app, int delta);
+bool pa_packet_pf_contains_cell_impl(const PaApp *app, int cell_x, int cell_y);
+void pa_packet_try_move_impl(PaApp *app, int dx, int dy);
+void pa_packet_update_field_impl(PaApp *app);
+
+void pa_world_generate_impl(PaApp *app);
+void pa_world_regenerate_chaos_impl(PaApp *app);
+void pa_world_advance_layer_impl(PaApp *app);
+void pa_world_regen_begin_cycle_impl(PaApp *app);
+void pa_world_regen_column_impl(PaApp *app, int col_x);
+void pa_world_regen_end_cycle_impl(PaApp *app);
+void pa_world_manifest_cell_impl(PaApp *app, int x, int y);
+
+#endif
+
+```

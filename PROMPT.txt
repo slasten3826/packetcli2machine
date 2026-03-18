@@ -1,0 +1,48 @@
+This folder is a machine-facing Packet kit.
+
+Read in this order:
+
+1. README.md
+2. packet_machine_render_layer.md
+3. packet_machine/README.md
+4. packet_machine_render_report.txt
+
+Then inspect code:
+
+- packet/include/packet/core.h
+- packet/include/packet/render_cli.h
+- packet/src/render_cli.c
+- platform/cli/main.c
+- include/packet_adventure/runtime_internal.h
+
+What this is:
+
+- not the whole game
+- not a fake demo
+- not only docs
+
+It is a real runnable slice of Packet CLI plus a machine-facing render layer.
+
+Important:
+
+- `./packet_cli` expects a real terminal/TTY
+- if you are another machine or agent, use:
+
+```bash
+python3 packet_machine/packet_machine_render.py
+```
+
+That script launches `packet_cli` through a PTY, sends scripted input, and writes a report.
+
+If you can build:
+
+```bash
+make
+python3 packet_machine/packet_machine_render.py
+```
+
+Please answer:
+
+1. Does this already look like a real machine-facing render layer, not just a helper script?
+2. What is already strong here as a separate entity?
+3. What is still missing before another machine can truly "play" Packet rather than only observe it?

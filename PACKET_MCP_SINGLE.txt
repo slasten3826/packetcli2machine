@@ -1,0 +1,610 @@
+# PACKET MCP SINGLE FILE
+
+This is a single-file machine bundle for the first local Packet MCP server.
+Read sections in order. It includes docs, bridge code, server code, and one real MCP transcript.
+
+================================================================
+FILE: docs/platform/packet_machine_to_mcp_hypothesis.md
+================================================================
+
+```text
+# Packet Machine To MCP Hypothesis
+
+## Status
+
+First implementation pass.
+
+## Why this should exist
+
+`packet_machine` already acts like a machine-facing protocol layer:
+
+- it launches real Packet runtime
+- it sends scripted input
+- it captures stable snapshots
+- it writes a machine-readable report
+
+This is already close to MCP thinking.
+
+The missing piece is not world logic.
+The missing piece is protocol formalization.
+
+## Main claim
+
+We should not start from "Packet itself becomes MCP".
+
+We should start from:
+
+- `Packet` stays low-level C runtime
+- `packet_machine` becomes Python bridge
+- `packet_mcp` becomes MCP server over that bridge
+
+That gives us:
+
+- real runtime below
+- machine-friendly Python layer in the middle
+- standard machine protocol on top
+
+## Why not start with full MCP first
+
+If we start directly from protocol,
+we risk drowning in transport and schema work.
+
+If we first expose a clean Python bridge API,
+then MCP becomes only a wrapper over an already coherent machine interface.
+
+## Minimal first MCP surface
+
+First MCP server does not need the whole world.
+
+It only needs a small honest surface:
+
+- `packet_run_script`
+- `packet_get_latest_report`
+- `packet_get_latest_snapshot`
+
+Optionally later:
+
+- `packet_set_default_binary`
+- `packet_set_default_commands`
+- `packet_list_presets`
+- `packet_run_preset`
+
+## First tool semantics
+
+### `packet_run_script`
+
+Input:
+
+- command string
+- optional binary path
+- optional timing parameters
+
+Output:
+
+- report text
+- latest snapshot
+- snapshot count
+
+### `packet_get_latest_report`
+
+Output:
+
+- most recent machine render report text
+
+### `packet_get_latest_snapshot`
+
+Output:
+
+- most recent snapshot only
+
+## Why this is enough
+
+With only these tools,
+an external machine can already:
+
+- cause Packet runtime to evolve
+- observe results
+- reason about behavior
+- ask for another run
+
+That is already much closer to "playing Packet"
+than only reading docs and static reports.
+
+## Transport
+
+First pass should be:
+
+- local
+- stdio
+- no internet server
+
+This keeps the system simple and honest.
+
+## Scope boundary
+
+This first MCP pass is not:
+
+- full remote hosting
+- multiplayer
+- full game API
+- ProcessLang API
+
+It is only:
+
+- Packet runtime observation and scripted interaction via a standard machine protocol
+
+## Success condition
+
+This hypothesis is validated when:
+
+- a local MCP-compatible client can connect
+- it can list Packet tools
+- it can call `packet_run_script`
+- and it receives a real report generated from a real `packet_cli` run
+
+```
+
+================================================================
+FILE: packet_mcp/README.md
+================================================================
+
+```text
+# Packet MCP
+
+## What this is
+
+`packet_mcp` is a first local MCP server over `packet_machine`.
+
+It is not a remote internet service.
+It is a local stdio server.
+
+## Purpose
+
+This layer lets an MCP-capable machine call Packet as tools instead of only reading reports.
+
+## Current first tools
+
+- `packet_run_script`
+- `packet_get_latest_report`
+- `packet_get_latest_snapshot`
+
+## Run
+
+From project root:
+
+```bash
+python3 packet_mcp/server.py
+```
+
+## Notes
+
+This is a first implementation pass.
+
+It is intentionally small:
+
+- local
+- stdio
+- no external dependencies
+- built over real `packet_cli` through `packet_machine`
+
+```
+
+================================================================
+FILE: packet_machine/bridge.py
+================================================================
+
+```python
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+from .packet_machine_render import run_machine_render, write_report
+
+
+@dataclass
+class PacketMachineResult:
+    binary: str
+    commands: list[str]
+    report_text: str
+    latest_snapshot: str
+    snapshot_count: int
+
+
+class PacketMachineBridge:
+    def __init__(self, default_binary: str = "./packet_cli") -> None:
+        self.default_binary = default_binary
+        self.latest_result: PacketMachineResult | None = None
+
+    def run_script(
+        self,
+        commands: str,
+        *,
+        binary: str | None = None,
+        startup_ms: int = 150,
+        between_ms: int = 180,
+        max_read_ms: int = 600,
+        report_path: str | None = None,
+    ) -> PacketMachineResult:
+        binary_path = binary or self.default_binary
+        command_list = [token.strip() for token in commands.split(",") if token.strip()]
+        snapshots = run_machine_render(
+            binary=binary_path,
+            commands=command_list,
+            startup_ms=startup_ms,
+            between_ms=between_ms,
+            max_read_ms=max_read_ms,
+        )
+
+        if report_path is None:
+            report_path = "packet_machine_render_report.txt"
+
+        out_path = Path(report_path)
+        write_report(out_path, binary_path, command_list, snapshots)
+        report_text = out_path.read_text(encoding="utf-8")
+        latest_snapshot = snapshots[-1][1] if snapshots else ""
+
+        result = PacketMachineResult(
+            binary=binary_path,
+            commands=command_list,
+            report_text=report_text,
+            latest_snapshot=latest_snapshot,
+            snapshot_count=len(snapshots),
+        )
+        self.latest_result = result
+        return result
+
+    def get_latest_report(self) -> str:
+        if self.latest_result is None:
+            return ""
+        return self.latest_result.report_text
+
+    def get_latest_snapshot(self) -> str:
+        if self.latest_result is None:
+            return ""
+        return self.latest_result.latest_snapshot
+
+```
+
+================================================================
+FILE: packet_mcp/server.py
+================================================================
+
+```python
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from packet_machine.bridge import PacketMachineBridge
+
+
+PROTOCOL_VERSION = "2024-11-05"
+SERVER_NAME = "packet-mcp"
+SERVER_VERSION = "0.1.0"
+
+
+class PacketMcpServer:
+    def __init__(self) -> None:
+        self.bridge = PacketMachineBridge()
+
+    def _send(self, payload: dict[str, Any]) -> None:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        sys.stdout.write(f"Content-Length: {len(body)}\r\n\r\n")
+        sys.stdout.flush()
+        sys.stdout.buffer.write(body)
+        sys.stdout.buffer.flush()
+
+    def _ok(self, request_id: Any, result: dict[str, Any]) -> None:
+        self._send({"jsonrpc": "2.0", "id": request_id, "result": result})
+
+    def _err(self, request_id: Any, code: int, message: str) -> None:
+        self._send(
+            {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "error": {"code": code, "message": message},
+            }
+        )
+
+    def _read_message(self) -> dict[str, Any] | None:
+        headers: dict[str, str] = {}
+        while True:
+            line = sys.stdin.buffer.readline()
+            if not line:
+                return None
+            if line in (b"\r\n", b"\n"):
+                break
+            text = line.decode("utf-8").strip()
+            if ":" in text:
+                key, value = text.split(":", 1)
+                headers[key.strip().lower()] = value.strip()
+
+        length_text = headers.get("content-length")
+        if not length_text:
+            return None
+        length = int(length_text)
+        body = sys.stdin.buffer.read(length)
+        if not body:
+            return None
+        return json.loads(body.decode("utf-8"))
+
+    def _handle_initialize(self, request_id: Any) -> None:
+        self._ok(
+            request_id,
+            {
+                "protocolVersion": PROTOCOL_VERSION,
+                "serverInfo": {"name": SERVER_NAME, "version": SERVER_VERSION},
+                "capabilities": {"tools": {}},
+            },
+        )
+
+    def _handle_tools_list(self, request_id: Any) -> None:
+        self._ok(
+            request_id,
+            {
+                "tools": [
+                    {
+                        "name": "packet_run_script",
+                        "description": "Run packet_cli through packet_machine and return a real Packet machine render report.",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "commands": {"type": "string"},
+                                "binary": {"type": "string"},
+                                "startup_ms": {"type": "integer"},
+                                "between_ms": {"type": "integer"},
+                                "max_read_ms": {"type": "integer"},
+                            },
+                            "required": ["commands"],
+                        },
+                    },
+                    {
+                        "name": "packet_get_latest_report",
+                        "description": "Return the latest Packet machine render report text.",
+                        "inputSchema": {"type": "object", "properties": {}},
+                    },
+                    {
+                        "name": "packet_get_latest_snapshot",
+                        "description": "Return the latest Packet snapshot only.",
+                        "inputSchema": {"type": "object", "properties": {}},
+                    },
+                ]
+            },
+        )
+
+    def _tool_text(self, text: str) -> dict[str, Any]:
+        return {"content": [{"type": "text", "text": text}]}
+
+    def _handle_tools_call(self, request_id: Any, params: dict[str, Any]) -> None:
+        name = params.get("name")
+        arguments = params.get("arguments", {})
+
+        if name == "packet_run_script":
+            commands = str(arguments.get("commands", "")).strip()
+            if not commands:
+                self._err(request_id, -32602, "packet_run_script requires commands")
+                return
+            result = self.bridge.run_script(
+                commands=commands,
+                binary=arguments.get("binary"),
+                startup_ms=int(arguments.get("startup_ms", 150)),
+                between_ms=int(arguments.get("between_ms", 180)),
+                max_read_ms=int(arguments.get("max_read_ms", 600)),
+            )
+            self._ok(
+                request_id,
+                self._tool_text(
+                    "\n".join(
+                        [
+                            f"snapshot_count: {result.snapshot_count}",
+                            "",
+                            result.report_text,
+                        ]
+                    )
+                ),
+            )
+            return
+
+        if name == "packet_get_latest_report":
+            self._ok(request_id, self._tool_text(self.bridge.get_latest_report()))
+            return
+
+        if name == "packet_get_latest_snapshot":
+            self._ok(request_id, self._tool_text(self.bridge.get_latest_snapshot()))
+            return
+
+        self._err(request_id, -32601, f"Unknown tool: {name}")
+
+    def handle(self, message: dict[str, Any]) -> None:
+        method = message.get("method")
+        request_id = message.get("id")
+        params = message.get("params", {})
+
+        if method == "initialize":
+            self._handle_initialize(request_id)
+            return
+        if method == "tools/list":
+            self._handle_tools_list(request_id)
+            return
+        if method == "tools/call":
+            self._handle_tools_call(request_id, params)
+            return
+        if method == "notifications/initialized":
+            return
+        if method == "ping":
+            self._ok(request_id, {})
+            return
+
+        if request_id is not None:
+            self._err(request_id, -32601, f"Unsupported method: {method}")
+
+    def serve(self) -> int:
+        while True:
+            message = self._read_message()
+            if message is None:
+                return 0
+            self.handle(message)
+
+
+def main() -> int:
+    return PacketMcpServer().serve()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+```
+
+================================================================
+REAL MCP TRANSCRIPT
+================================================================
+
+## REQUEST initialize
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {}
+}
+```
+
+## RESPONSE initialize
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "protocolVersion": "2024-11-05",
+    "serverInfo": {
+      "name": "packet-mcp",
+      "version": "0.1.0"
+    },
+    "capabilities": {
+      "tools": {}
+    }
+  }
+}
+```
+
+## REQUEST notifications/initialized
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "notifications/initialized",
+  "params": {}
+}
+```
+
+## REQUEST tools/list
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/list",
+  "params": {}
+}
+```
+
+## RESPONSE tools/list
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "tools": [
+      {
+        "name": "packet_run_script",
+        "description": "Run packet_cli through packet_machine and return a real Packet machine render report.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "commands": {
+              "type": "string"
+            },
+            "binary": {
+              "type": "string"
+            },
+            "startup_ms": {
+              "type": "integer"
+            },
+            "between_ms": {
+              "type": "integer"
+            },
+            "max_read_ms": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "commands"
+          ]
+        }
+      },
+      {
+        "name": "packet_get_latest_report",
+        "description": "Return the latest Packet machine render report text.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "packet_get_latest_snapshot",
+        "description": "Return the latest Packet snapshot only.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    ]
+  }
+}
+```
+
+## REQUEST tools/call packet_run_script
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "packet_run_script",
+    "arguments": {
+      "commands": "n,QUIT"
+    }
+  }
+}
+```
+
+## RESPONSE tools/call packet_run_script
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "snapshot_count: 3\n\nPACKET_MACHINE_RENDER_REPORT\nbinary: ./packet_cli\ncommands: n,QUIT\nsnapshots: 3\n\n=== SNAPSHOT 00: startup ===\nPACKET DEV CLI  frame=0 sweep=0 sw=live field=2 mode=composite run=step turbulence>=120\npacket=(224,63) transition=(102,141) layer=0 hash=81F4B24B\n 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1\n 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1\n 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1\n 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2\n 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2\n 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2\n 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2\n 2 2 3 3 3 3 3@3 3 3 3 3 3 2  | 2\n 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2\n 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2\n 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2\n 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2\n\n=== SNAPSHOT 01: n ===\nPACKET DEV CLI  frame=1 sweep=1 sw=live field=2 mode=composite run=step turbulence>=120\npacket=(224,63) transition=(102,141) layer=0 hash=81F4B24B\n 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1\n 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1\n 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1\n 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2\n 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2\n 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2\n 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2\n 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2\n 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2\n 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2\n 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2\n 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2\n 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1\n\n=== SNAPSHOT 02: QUIT ===\nPACKET DEV CLI  frame=1 sweep=1 sw=live field=2 mode=composite run=step turbulence>=120\npacket=(224,63) transition=(102,141) layer=0 hash=81F4B24B\n 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1\n 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1\n 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1\n 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2\n 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2\n 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2\n 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2\n 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2\n 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2\n 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2\n 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2\n 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2\n 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1\n 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1\n 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1\nview: latent=212 manifest=12 crystal=1 turbulence=0 walls=0\nlegend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf\ncontrols: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed\ndev: space auto-run, n single tick, v cycle view, q/x quit\n\n"
+      }
+    ]
+  }
+}
+```
+

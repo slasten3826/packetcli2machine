@@ -1,0 +1,4135 @@
+# PACKETCLI BUILDABLE SINGLE FILE
+
+This is a single-file machine bundle for the buildable Packet CLI runtime slice.
+It contains the actual source slice, headers, Makefile, machine render layer, and one sample report.
+A machine that can reconstruct files from this bundle should be able to build packet_cli and then use packet_machine/packet_machine_render.py.
+
+================================================================
+FILE: packetcli2machine/README.md
+================================================================
+
+```text
+# packetcli2machine
+
+## What this is
+
+This is a machine-facing Packet kit.
+
+Its purpose is not to expose the whole project.
+Its purpose is to let another machine:
+
+- build `packet_cli`
+- run `packet_cli`
+- run machine render over it
+- observe real Packet runtime behavior
+
+## What is included
+
+- minimal real source slice needed to build `packet_cli`
+- `packet_machine/packet_machine_render.py`
+- one sample machine render report
+- one prebuilt `packet_cli` binary if available on the source machine
+
+## Fast path
+
+If the bundled binary works on the target machine:
+
+```bash
+cd packetcli2machine
+./packet_cli
+```
+
+Machine-facing report:
+
+```bash
+cd packetcli2machine
+python3 packet_machine/packet_machine_render.py
+```
+
+## Build from source
+
+```bash
+cd packetcli2machine
+make
+./packet_cli
+```
+
+## Why this matters
+
+This kit is meant to let another machine do more than read code and docs.
+
+It can:
+
+- run the runtime
+- send scripted input
+- inspect state snapshots
+
+That is the first practical step toward machine-visible Packet behavior.
+
+```
+
+================================================================
+FILE: packetcli2machine/MACHINE_INSTRUCTION.md
+================================================================
+
+```text
+# Machine Instruction
+
+## What this folder is
+
+This folder is a standalone machine-facing Packet kit.
+
+It exists so another machine can:
+
+- build a real `packet_cli`
+- run a real Packet runtime slice
+- observe runtime behavior through a machine-facing render layer
+
+This is not the whole project.
+This is not the whole game.
+This is not a fake stub.
+
+It is a minimal real Packet CLI slice plus a machine-facing observation layer.
+
+## What to read first
+
+Read in this order:
+
+1. `README.md`
+2. `packet_machine_render_layer.md`
+3. `packet_machine/README.md`
+4. `packet_machine_render_report.txt`
+
+Then inspect source if needed:
+
+- `packet/include/packet/core.h`
+- `packet/include/packet/render_cli.h`
+- `packet/src/render_cli.c`
+- `platform/cli/main.c`
+- `include/packet_adventure/runtime_internal.h`
+
+## What to run
+
+If you want to build from source:
+
+```bash
+cd packetcli2machine
+make
+```
+
+If you want the machine-facing path:
+
+```bash
+cd packetcli2machine
+python3 packet_machine/packet_machine_render.py
+```
+
+This writes:
+
+- `packet_machine_render_report.txt`
+
+## Important note about `packet_cli`
+
+`./packet_cli` expects a real terminal/TTY.
+
+So if you are another machine, agent, or automated tool,
+the preferred entrypoint is:
+
+```bash
+python3 packet_machine/packet_machine_render.py
+```
+
+That script:
+
+- launches `packet_cli` through a PTY
+- sends scripted commands
+- captures clean textual snapshots
+- writes one report file
+
+## Default scripted run
+
+The default command script is:
+
+```text
+n,v,SPACE,n,w,n,QUIT
+```
+
+Meaning:
+
+- `n` = one tick
+- `v` = change render mode
+- `SPACE` = toggle auto-run
+- `w` = move packet up
+- `QUIT` = exit
+
+## What the machine should evaluate
+
+After reading the report and code, answer:
+
+1. Does this already behave like a real machine-facing render layer?
+2. What is already strong here as a separate entity?
+3. What is still missing before another machine can truly play Packet instead of only observing it?
+
+## Short summary
+
+If you only remember one thing:
+
+> Use `packet_machine/packet_machine_render.py`, not raw `packet_cli`.
+
+```
+
+================================================================
+FILE: packetcli2machine/Makefile
+================================================================
+
+```makefile
+CC ?= cc
+CFLAGS ?= -std=c11 -O2 -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=200809L -Iinclude -Ipacket/include
+
+TARGET = packet_cli
+OBJS = \
+	platform/cli/main.o \
+	src/runtime/app.o \
+	src/world_runtime/world_runtime.o \
+	src/manifestation_runtime/manifestation_runtime.o \
+	src/packet_runtime/packet_runtime.o \
+	src/ui_runtime/ui_render.o \
+	src/rendering/render_primitives.o \
+	src/rendering/font_renderer.o \
+	packet/src/render_cli.o
+
+.DEFAULT_GOAL := $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(OBJS) -o $@
+
+platform/cli/main.o: platform/cli/main.c packet/include/packet/core.h packet/include/packet/render_cli.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/runtime/app.o: src/runtime/app.c include/packet_adventure/app.h include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h include/packet_adventure/font_renderer.h include/packet_adventure/runtime_internal.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/world_runtime/world_runtime.o: src/world_runtime/world_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/manifestation_runtime/manifestation_runtime.o: src/manifestation_runtime/manifestation_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/packet_runtime/packet_runtime.o: src/packet_runtime/packet_runtime.c include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/ui_runtime/ui_render.o: src/ui_runtime/ui_render.c include/packet_adventure/ui_render.h include/packet_adventure/runtime_internal.h include/packet_adventure/app.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/rendering/render_primitives.o: src/rendering/render_primitives.c include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/rendering/font_renderer.o: src/rendering/font_renderer.c include/packet_adventure/render_target.h include/packet_adventure/render_primitives.h include/packet_adventure/font_renderer.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+packet/src/render_cli.o: packet/src/render_cli.c packet/include/packet/render_cli.h packet/include/packet/core.h include/packet_adventure/runtime_internal.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+.PHONY: clean
+
+clean:
+	rm -f $(TARGET) $(OBJS)
+
+```
+
+================================================================
+FILE: packetcli2machine/packet_machine_render_layer.md
+================================================================
+
+```text
+# Packet Machine Render Layer
+
+## Status
+
+Working hypothesis.
+First implementation pass follows immediately after this document.
+
+## Why this exists
+
+`packet_cli` already gave us a second manifestation of `Packet`:
+
+- not PSP
+- not SDL
+- not visual presentation for players
+
+It gave us a text manifestation of the substrate.
+
+Then `packet_cli_harness.py` added one more step:
+
+- not human live play
+- but scripted observation
+- and snapshot capture for another machine
+
+At that point this stopped being "just a helper script".
+
+It became a new kind of render.
+
+## Core claim
+
+There is a new manifestation layer in the project:
+
+- human render
+- machine render
+
+Human render exists to be read by a person.
+Machine render exists to be read by another runtime, agent, or LLM.
+
+This is still render, because it does not define the world law itself.
+It defines how world law becomes observable.
+
+## What machine render should do
+
+Machine render should:
+
+- launch a real Packet runtime
+- drive it through repeatable scripted input
+- capture stable state snapshots
+- expose enough state for another machine to reason about behavior
+- stay close to the real runtime, not a fake stub
+
+## What machine render should not do
+
+Machine render should not:
+
+- invent a fake Packet world
+- replace the real runtime with a toy simulation
+- become a separate gameplay fork
+- duplicate the whole engine in Python
+
+The point is not "machine-friendly fake Packet".
+The point is "machine-friendly access to real Packet".
+
+## Current first proof
+
+Current proof path already exists:
+
+- `packet_cli`
+- `packet/src/render_cli.c`
+- `platform/cli/main.c`
+- `scripts/packet_cli_harness.py`
+
+This is enough to prove the basic claim:
+
+> Another machine can already observe Packet indirectly through a scripted textual manifestation.
+
+## Next extraction step
+
+We now want to make this explicit.
+
+Not:
+
+- random script in `scripts/`
+
+But:
+
+- an explicit machine-facing layer
+- with its own README
+- with its own entrypoint
+- with its own purpose
+
+## Expected first shape
+
+First shape should stay minimal:
+
+- `packet_machine/README.md`
+- `packet_machine/packet_machine_render.py`
+
+This layer can start as a thin wrapper over existing CLI manifestation.
+
+That is acceptable.
+
+The important step is not maximal power.
+The important step is architectural recognition:
+
+> machine-facing manifestation is now a real project entity
+
+## Verification
+
+This extraction pass is successful when:
+
+- the new machine render entrypoint works
+- it can generate a report from a real `packet_cli` run
+- the layer can be pointed to as a distinct entity in the repo
+
+## Long-term implication
+
+If this path holds,
+then other machines do not need to only read code and docs.
+
+They can:
+
+- read docs
+- inspect code
+- run machine render
+- observe Packet behavior directly
+
+That would make multi-machine development much more practical.
+
+```
+
+================================================================
+FILE: packetcli2machine/packet_machine/README.md
+================================================================
+
+```text
+# Packet Machine
+
+## What this is
+
+`packet_machine` is the first explicit machine-facing manifestation layer for `Packet`.
+
+It does not replace:
+
+- `Packet`
+- `Packet Adventure`
+- `packet_cli`
+
+It sits beside them.
+
+## Purpose
+
+This layer exists so another machine can:
+
+- launch a real Packet runtime
+- send scripted input
+- capture clean textual state snapshots
+- reason about real Packet behavior
+
+## Current first implementation
+
+Current implementation is a machine render wrapper over `packet_cli`.
+
+That means:
+
+- runtime stays real
+- presentation stays textual
+- observation becomes machine-friendly
+
+## Why this matters
+
+Without this layer,
+another machine mostly reads:
+
+- code
+- docs
+- screenshots
+- reports
+
+With this layer,
+another machine can also observe:
+
+- repeatable Packet runtime behavior
+
+## First entrypoint
+
+Use:
+
+```bash
+cd /home/slasten/dev/packet3
+make packet_cli
+python3 packet_machine/packet_machine_render.py
+```
+
+This writes a plain-text report containing a startup snapshot and one snapshot after each scripted command.
+
+## Scope
+
+This is not yet a full standalone Packet runtime export.
+
+It is the first explicit machine-facing render/entity in the project.
+
+```
+
+================================================================
+FILE: packetcli2machine/packet_machine/packet_machine_render.py
+================================================================
+
+```python
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import os
+import pty
+import select
+import subprocess
+import time
+from pathlib import Path
+
+
+CLEAR_SEQ = "\x1b[H\x1b[2J"
+FRAME_END = "---PACKET-CLI-FRAME-END---"
+DEFAULT_BINARY = "./packet_cli"
+DEFAULT_COMMANDS = "n,v,SPACE,n,w,n,QUIT"
+
+
+def strip_ansi(text: str) -> str:
+    out: list[str] = []
+    i = 0
+    n = len(text)
+
+    while i < n:
+        ch = text[i]
+        if ch == "\x1b":
+            i += 1
+            if i < n and text[i] == "[":
+                i += 1
+                while i < n and not ("@" <= text[i] <= "~"):
+                    i += 1
+                if i < n:
+                    i += 1
+            continue
+        out.append(ch)
+        i += 1
+
+    return "".join(out)
+
+
+def token_to_chars(token: str) -> str:
+    mapping = {
+        "SPACE": " ",
+        "TAB": "\t",
+        "ENTER": "\n",
+        "QUIT": "q",
+    }
+    key = token.strip()
+    upper = key.upper()
+
+    if upper in mapping:
+        return mapping[upper]
+    if len(key) == 1:
+        return key
+    raise ValueError(f"Unsupported command token: {token}")
+
+
+def read_available(fd: int, quiet_ms: int, max_ms: int) -> str:
+    chunks: list[bytes] = []
+    deadline = time.time() + (quiet_ms / 1000.0)
+    hard_deadline = time.time() + (max_ms / 1000.0)
+
+    while True:
+        if time.time() >= hard_deadline:
+            break
+        timeout = max(0.0, deadline - time.time())
+        ready, _, _ = select.select([fd], [], [], timeout)
+        if not ready:
+            break
+        try:
+            data = os.read(fd, 65536)
+        except OSError:
+            break
+        if not data:
+            break
+        chunks.append(data)
+        deadline = time.time() + (quiet_ms / 1000.0)
+
+    return b"".join(chunks).decode("utf-8", errors="replace")
+
+
+def extract_latest_snapshot(raw_text: str) -> str:
+    clean = strip_ansi(raw_text).replace("\r", "")
+    if FRAME_END in clean:
+        parts = clean.split(FRAME_END)
+        latest = parts[-2] if len(parts) >= 2 else parts[-1]
+    else:
+        parts = raw_text.split(CLEAR_SEQ)
+        latest = parts[-1] if parts else raw_text
+        latest = strip_ansi(latest).replace("\r", "")
+    return latest.strip("\n")
+
+
+def write_report(
+    out_path: Path,
+    binary: str,
+    commands: list[str],
+    snapshots: list[tuple[str, str]],
+) -> None:
+    with out_path.open("w", encoding="utf-8") as f:
+        f.write("PACKET_MACHINE_RENDER_REPORT\n")
+        f.write(f"binary: {binary}\n")
+        f.write(f"commands: {','.join(commands)}\n")
+        f.write(f"snapshots: {len(snapshots)}\n\n")
+
+        for index, (label, snap) in enumerate(snapshots):
+            f.write(f"=== SNAPSHOT {index:02d}: {label} ===\n")
+            f.write(snap)
+            f.write("\n\n")
+
+
+def run_machine_render(
+    binary: str,
+    commands: list[str],
+    startup_ms: int,
+    between_ms: int,
+    max_read_ms: int,
+) -> list[tuple[str, str]]:
+    master_fd, slave_fd = pty.openpty()
+    proc = subprocess.Popen(
+        [binary],
+        stdin=slave_fd,
+        stdout=slave_fd,
+        stderr=slave_fd,
+        close_fds=True,
+    )
+    os.close(slave_fd)
+
+    snapshots: list[tuple[str, str]] = []
+
+    try:
+        initial_raw = read_available(master_fd, startup_ms, max_read_ms)
+        snapshots.append(("startup", extract_latest_snapshot(initial_raw)))
+
+        for token in commands:
+            chars = token_to_chars(token)
+            os.write(master_fd, chars.encode("utf-8"))
+            raw = read_available(master_fd, between_ms, max_read_ms)
+            snapshots.append((token, extract_latest_snapshot(raw)))
+            if token.upper() == "QUIT":
+                break
+
+        try:
+            proc.wait(timeout=1.0)
+        except subprocess.TimeoutExpired:
+            proc.terminate()
+            try:
+                proc.wait(timeout=1.0)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=1.0)
+    finally:
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass
+
+    return snapshots
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Machine-facing render for Packet via packet_cli PTY snapshots."
+    )
+    parser.add_argument(
+        "--binary",
+        default=DEFAULT_BINARY,
+        help="Path to packet_cli binary. Default: ./packet_cli",
+    )
+    parser.add_argument(
+        "--commands",
+        default=DEFAULT_COMMANDS,
+        help="Comma-separated command tokens. Supports single chars plus SPACE, TAB, ENTER, QUIT.",
+    )
+    parser.add_argument(
+        "--startup-ms",
+        type=int,
+        default=150,
+        help="Initial quiet read window after startup.",
+    )
+    parser.add_argument(
+        "--between-ms",
+        type=int,
+        default=180,
+        help="Quiet read window after each command.",
+    )
+    parser.add_argument(
+        "--max-read-ms",
+        type=int,
+        default=600,
+        help="Hard cap for one read window, useful when scripted commands enable auto-run.",
+    )
+    parser.add_argument(
+        "--output",
+        default="packet_machine_render_report.txt",
+        help="Where to write the final report.",
+    )
+    args = parser.parse_args()
+
+    commands = [token.strip() for token in args.commands.split(",") if token.strip()]
+    snapshots = run_machine_render(
+        binary=args.binary,
+        commands=commands,
+        startup_ms=args.startup_ms,
+        between_ms=args.between_ms,
+        max_read_ms=args.max_read_ms,
+    )
+    out_path = Path(args.output)
+    write_report(out_path, args.binary, commands, snapshots)
+    print(f"Wrote {out_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+```
+
+================================================================
+FILE: packetcli2machine/include/packet_adventure/app.h
+================================================================
+
+```c
+#ifndef PACKET_ADVENTURE_APP_H
+#define PACKET_ADVENTURE_APP_H
+
+#include "packet/core.h"
+#include "packet_adventure/render_target.h"
+void pa_app_render(const PaApp *app, PaSurface *surface);
+
+#endif
+
+```
+
+================================================================
+FILE: packetcli2machine/include/packet_adventure/font_renderer.h
+================================================================
+
+```c
+#ifndef PACKET_ADVENTURE_FONT_RENDERER_H
+#define PACKET_ADVENTURE_FONT_RENDERER_H
+
+#include <stdint.h>
+
+#include "packet_adventure/render_target.h"
+
+void pa_draw_text(PaSurface *surface, int x, int y, const char *text, uint32_t color, int scale);
+int pa_text_width(const char *text, int scale);
+void pa_draw_text_small(PaSurface *surface, int x, int y, const char *text, uint32_t color);
+int pa_text_small_width(const char *text);
+
+#endif
+
+```
+
+================================================================
+FILE: packetcli2machine/include/packet_adventure/render_primitives.h
+================================================================
+
+```c
+#ifndef PACKET_ADVENTURE_RENDER_PRIMITIVES_H
+#define PACKET_ADVENTURE_RENDER_PRIMITIVES_H
+
+#include <stdint.h>
+
+#include "packet_adventure/render_target.h"
+
+void pa_copy_surface(PaSurface *dst, const PaSurface *src);
+void pa_clear(PaSurface *surface, uint32_t color);
+void pa_fill_rect(PaSurface *surface, PaRect rect, uint32_t color);
+void pa_draw_rect(PaSurface *surface, PaRect rect, uint32_t color);
+void pa_draw_line(PaSurface *surface, int x0, int y0, int x1, int y1, uint32_t color);
+
+#endif
+
+```
+
+================================================================
+FILE: packetcli2machine/include/packet_adventure/render_target.h
+================================================================
+
+```c
+#ifndef PACKET_ADVENTURE_RENDER_TARGET_H
+#define PACKET_ADVENTURE_RENDER_TARGET_H
+
+#include <stddef.h>
+#include <stdint.h>
+
+#define PA_SCREEN_WIDTH 480
+#define PA_SCREEN_HEIGHT 272
+
+typedef enum {
+    PA_PIXEL_FORMAT_565 = 0,
+    PA_PIXEL_FORMAT_8888 = 1
+} PaPixelFormat;
+
+typedef struct {
+    void *pixels;
+    int width;
+    int height;
+    int stride;
+    PaPixelFormat format;
+} PaSurface;
+
+typedef struct {
+    int x;
+    int y;
+    int w;
+    int h;
+} PaRect;
+
+uint32_t pa_rgb(unsigned int r, unsigned int g, unsigned int b);
+
+#endif
+
+```
+
+================================================================
+FILE: packetcli2machine/include/packet_adventure/runtime_internal.h
+================================================================
+
+```c
+#ifndef PACKET_ADVENTURE_RUNTIME_INTERNAL_H
+#define PACKET_ADVENTURE_RUNTIME_INTERNAL_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "packet/core.h"
+
+#define PA_MOVE_COOLDOWN 5u
+#define PA_PARAM_COOLDOWN 8u
+#define PA_SWEEP_PERIOD 240u
+#define PA_PW_PERIOD (PA_SWEEP_PERIOD)
+#define PA_MINIMAP_LOGICAL_W 24
+#define PA_MINIMAP_LOGICAL_H 24
+#define PA_MINIMAP_SCALE 4
+#define PA_MINIMAP_SPAN_X 48
+#define PA_MINIMAP_SPAN_Y 48
+#define PA_MANIFEST_SPAN_X 56
+#define PA_MANIFEST_SPAN_Y 40
+#define PA_TURBULENCE_THRESHOLD 120u
+
+typedef struct {
+    PaOperatorType op;
+    int x;
+    int y;
+} PaZoneCenter;
+
+typedef struct {
+    PaOperatorType op;
+    int anchor_x;
+    int anchor_y;
+    int spread_x;
+    int spread_y;
+    int copies;
+} PaRegionPlan;
+
+uint32_t pa_lcg_next(uint32_t *state);
+int pa_rand_range(uint32_t *state, int min_value, int max_value);
+int pa_clamp(int value, int min_value, int max_value);
+int pa_wrap_coord(int value, int size);
+int pa_torus_delta(int from, int to, int size);
+int pa_torus_lerp(int from, int to, int step, int steps, int size);
+uint32_t pa_chaos_seed_from_calm(const PaApp *app);
+const PaOperatorProfile *pa_operator_profile(PaOperatorType op);
+bool pa_operator_world_enabled(PaOperatorType op);
+bool pa_operator_process_enabled(PaOperatorType op);
+bool pa_operator_allowed(PaOperatorType a, PaOperatorType b);
+PaZoneType pa_operator_zone(PaOperatorType op);
+PaOperatorType pa_find_bridge_operator(PaOperatorType a, PaOperatorType b);
+int pa_pf_metric(int dx, int dy);
+void pa_select_path(PaOperatorType *ops, uint32_t *seed);
+unsigned int pa_cell_noise(int x, int y, int salt);
+void pa_add_region_seeds(PaZoneCenter *centers, int *count, const PaRegionPlan *plan, uint32_t *seed);
+
+int pa_manifest_mf_strength_impl(const PaApp *app, int x, int y);
+bool pa_manifest_cell_is_turbulence_impl(const PaApp *app, int x, int y);
+void pa_manifest_refresh_density_impl(PaApp *app);
+void pa_manifest_refresh_world_fields_impl(PaApp *app);
+void pa_manifest_refresh_density_local_impl(PaApp *app);
+void pa_manifest_refresh_world_fields_local_impl(PaApp *app);
+
+void pa_packet_adjust_field_impl(PaApp *app, int delta);
+bool pa_packet_pf_contains_cell_impl(const PaApp *app, int cell_x, int cell_y);
+void pa_packet_try_move_impl(PaApp *app, int dx, int dy);
+void pa_packet_update_field_impl(PaApp *app);
+
+void pa_world_generate_impl(PaApp *app);
+void pa_world_regenerate_chaos_impl(PaApp *app);
+void pa_world_advance_layer_impl(PaApp *app);
+void pa_world_regen_begin_cycle_impl(PaApp *app);
+void pa_world_regen_column_impl(PaApp *app, int col_x);
+void pa_world_regen_end_cycle_impl(PaApp *app);
+void pa_world_manifest_cell_impl(PaApp *app, int x, int y);
+
+#endif
+
+```
+
+================================================================
+FILE: packetcli2machine/include/packet_adventure/ui_render.h
+================================================================
+
+```c
+#ifndef PACKET_ADVENTURE_UI_RENDER_H
+#define PACKET_ADVENTURE_UI_RENDER_H
+
+#include "packet_adventure/app.h"
+
+void pa_ui_render_copy_cache(PaSurface *surface, const PaApp *app);
+void pa_ui_render_status(PaSurface *surface, const PaApp *app);
+void pa_ui_render_log(PaSurface *surface, const PaApp *app);
+void pa_ui_render_debug_map(PaSurface *surface, const PaApp *app);
+
+#endif
+
+```
+
+================================================================
+FILE: packetcli2machine/packet/include/packet/core.h
+================================================================
+
+```c
+#ifndef PACKET_CORE_H
+#define PACKET_CORE_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#define PA_VIEW_COLS 15
+#define PA_VIEW_ROWS 15
+#define PA_WORLD_COLS 256
+#define PA_WORLD_ROWS 192
+
+enum {
+    PA_INPUT_UP = 1u << 0,
+    PA_INPUT_DOWN = 1u << 1,
+    PA_INPUT_LEFT = 1u << 2,
+    PA_INPUT_RIGHT = 1u << 3,
+    PA_INPUT_PARAM_DEC = 1u << 4,
+    PA_INPUT_PARAM_INC = 1u << 5,
+    PA_INPUT_MAP_TOGGLE = 1u << 6,
+    PA_INPUT_REGEN = 1u << 7,
+    PA_INPUT_SW_TOGGLE = 1u << 8,
+    PA_INPUT_SW_STEP = 1u << 9,
+    PA_INPUT_SW_SLOWER = 1u << 10,
+    PA_INPUT_SW_FASTER = 1u << 11,
+};
+
+typedef enum {
+    PA_TILE_VOID = 0,
+    PA_TILE_WALL = 1,
+    PA_TILE_FLOOR = 2,
+} PaTileType;
+
+typedef enum {
+    PA_ZONE_CALM = 0,
+    PA_ZONE_BOUNDARY = 1,
+    PA_ZONE_CHAOS = 2,
+} PaZoneType;
+
+typedef enum {
+    PA_OP_FLOW = 0,
+    PA_OP_CONNECT = 1,
+    PA_OP_DISSOLVE = 2,
+    PA_OP_ENCODE = 3,
+    PA_OP_CHOOSE = 4,
+    PA_OP_OBSERVE = 5,
+    PA_OP_CYCLE = 6,
+    PA_OP_LOGIC = 7,
+    PA_OP_RUNTIME = 8,
+    PA_OP_MANIFEST = 9,
+    PA_OP_COUNT = 10
+} PaOperatorType;
+
+typedef struct {
+    uint8_t world_strength;
+    uint8_t process_strength;
+    int8_t stability_bias;
+    int8_t pressure_bias;
+} PaOperatorProfile;
+
+typedef struct {
+    uint32_t frame;
+    uint32_t sweep_frame;
+    uint32_t input_mask;
+    uint32_t prev_input_mask;
+    uint32_t move_cooldown;
+    uint32_t param_cooldown;
+    uint32_t entropy;
+    uint32_t topology_revision;
+    uint32_t world_seed;
+    uint32_t regen_cycle_seed;
+    uint32_t sw_cycle_count;
+    uint32_t layer_index;
+    uint32_t debug_regen_begin_count;
+    uint32_t debug_regen_end_count;
+    uint32_t debug_regen_columns;
+    uint32_t debug_regen_changed_cells;
+    uint32_t debug_regen_last_changed_cells;
+    uint32_t debug_world_hash;
+    uint8_t sweep_speed;
+    uint8_t debug_regen_last_column;
+    int packet_x;
+    int packet_y;
+    int transition_x;
+    int transition_y;
+    int packet_field_radius;
+    bool map_open;
+    bool sweep_paused;
+    bool transition_reached;
+    bool quit_requested;
+    uint8_t tiles[PA_WORLD_ROWS][PA_WORLD_COLS];
+    uint8_t zones[PA_WORLD_ROWS][PA_WORLD_COLS];
+    uint8_t operators[PA_WORLD_ROWS][PA_WORLD_COLS];
+    uint16_t base_operator_area[PA_OP_COUNT];
+    uint8_t local_entropy_rate[PA_WORLD_ROWS][PA_WORLD_COLS];
+    uint8_t local_density[PA_WORLD_ROWS][PA_WORLD_COLS];
+    bool manifested[PA_WORLD_ROWS][PA_WORLD_COLS];
+    bool calm[PA_WORLD_ROWS][PA_WORLD_COLS];
+} PaApp;
+
+void pa_app_init(PaApp *app);
+void pa_app_set_input(PaApp *app, uint32_t input_mask);
+void pa_app_update(PaApp *app);
+const char *pa_app_build_id(void);
+
+#endif
+
+```
+
+================================================================
+FILE: packetcli2machine/packet/include/packet/render_cli.h
+================================================================
+
+```c
+#ifndef PACKET_RENDER_CLI_H
+#define PACKET_RENDER_CLI_H
+
+#include <stdio.h>
+
+#include "packet/core.h"
+
+typedef enum {
+    PA_CLI_MODE_GLYPH = 0,
+    PA_CLI_MODE_DENSITY = 1,
+    PA_CLI_MODE_COMPOSITE = 2
+} PaCliRenderMode;
+
+void pa_cli_render_frame(FILE *out, const PaApp *app, PaCliRenderMode mode, int auto_run);
+
+#endif
+
+```
+
+================================================================
+FILE: packetcli2machine/platform/cli/main.c
+================================================================
+
+```c
+#include <errno.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/select.h>
+#include <termios.h>
+#include <time.h>
+#include <unistd.h>
+
+#include "packet/core.h"
+#include "packet/render_cli.h"
+
+static struct termios g_cli_termios_saved;
+static int g_cli_termios_valid = 0;
+
+typedef struct {
+    uint32_t app_mask;
+    int quit_requested;
+    int auto_run_toggled;
+    int step_once;
+    int cycle_mode;
+} PaCliInput;
+
+static void pa_cli_restore_terminal(void) {
+    if (g_cli_termios_valid) {
+        tcsetattr(STDIN_FILENO, TCSANOW, &g_cli_termios_saved);
+        g_cli_termios_valid = 0;
+    }
+}
+
+static int pa_cli_setup_terminal(void) {
+    struct termios raw;
+
+    if (tcgetattr(STDIN_FILENO, &g_cli_termios_saved) != 0) {
+        return -1;
+    }
+
+    g_cli_termios_valid = 1;
+    raw = g_cli_termios_saved;
+    raw.c_lflag &= (tcflag_t)~(ICANON | ECHO);
+    raw.c_cc[VMIN] = 0;
+    raw.c_cc[VTIME] = 0;
+
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) != 0) {
+        g_cli_termios_valid = 0;
+        return -1;
+    }
+
+    atexit(pa_cli_restore_terminal);
+    return 0;
+}
+
+static PaCliInput pa_cli_poll_input(void) {
+    PaCliInput input = {0u, 0, 0, 0, 0};
+    fd_set readfds;
+    struct timeval timeout = {0, 0};
+    char ch;
+    ssize_t nread;
+
+    FD_ZERO(&readfds);
+    FD_SET(STDIN_FILENO, &readfds);
+
+    if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) <= 0) {
+        return input;
+    }
+
+    for (;;) {
+        nread = read(STDIN_FILENO, &ch, 1);
+        if (nread <= 0) {
+            if (nread < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                break;
+            }
+            break;
+        }
+
+        switch (ch) {
+            case 'w': case 'W': input.app_mask |= PA_INPUT_UP; break;
+            case 's': case 'S': input.app_mask |= PA_INPUT_DOWN; break;
+            case 'a': case 'A': input.app_mask |= PA_INPUT_LEFT; break;
+            case 'd': case 'D': input.app_mask |= PA_INPUT_RIGHT; break;
+            case 'm': case 'M': input.app_mask |= PA_INPUT_MAP_TOGGLE; break;
+            case 'r': case 'R': input.app_mask |= PA_INPUT_REGEN; break;
+            case 'f': case 'F': input.app_mask |= PA_INPUT_SW_TOGGLE; break;
+            case 'g': case 'G': input.app_mask |= PA_INPUT_SW_STEP; break;
+            case '[': input.app_mask |= PA_INPUT_SW_SLOWER; break;
+            case ']': input.app_mask |= PA_INPUT_SW_FASTER; break;
+            case '-': case '_': input.app_mask |= PA_INPUT_PARAM_DEC; break;
+            case '=': case '+': input.app_mask |= PA_INPUT_PARAM_INC; break;
+            case ' ': input.auto_run_toggled = 1; break;
+            case 'n': case 'N': input.step_once = 1; break;
+            case 'v': case 'V': input.cycle_mode = 1; break;
+            case 'x': case 'X':
+            case 'q': case 'Q':
+                input.quit_requested = 1;
+                break;
+            default:
+                break;
+        }
+    }
+
+    return input;
+}
+
+static void pa_cli_sleep_ms(long ms) {
+    struct timespec req;
+
+    req.tv_sec = ms / 1000L;
+    req.tv_nsec = (ms % 1000L) * 1000000L;
+    nanosleep(&req, NULL);
+}
+
+int main(void) {
+    PaApp app;
+    PaCliRenderMode mode = PA_CLI_MODE_COMPOSITE;
+    int auto_run = 0;
+    long sleep_ms = 120L;
+
+    pa_app_init(&app);
+
+    if (pa_cli_setup_terminal() != 0) {
+        fprintf(stderr, "cli terminal setup failed\n");
+        return 1;
+    }
+
+    for (;;) {
+        PaCliInput input;
+
+        pa_cli_render_frame(stdout, &app, mode, auto_run);
+        fprintf(stdout, "controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed\n");
+        fprintf(stdout, "dev: space auto-run, n single tick, v cycle view, q/x quit\n");
+
+        input = pa_cli_poll_input();
+        if (input.quit_requested) {
+            break;
+        }
+
+        if (input.auto_run_toggled) {
+            auto_run = !auto_run;
+        }
+        if (input.cycle_mode) {
+            mode = (PaCliRenderMode)(((int)mode + 1) % 3);
+        }
+
+        if (auto_run || input.step_once || input.app_mask != 0u) {
+            pa_app_set_input(&app, input.app_mask);
+            pa_app_update(&app);
+        } else {
+            pa_app_set_input(&app, 0u);
+        }
+
+        if (app.quit_requested) {
+            break;
+        }
+        pa_cli_sleep_ms(sleep_ms);
+    }
+
+    return 0;
+}
+
+```
+
+================================================================
+FILE: packetcli2machine/src/runtime/app.c
+================================================================
+
+```c
+#include "packet_adventure/app.h"
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <limits.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "packet_adventure/font_renderer.h"
+#include "packet_adventure/render_primitives.h"
+#include "packet_adventure/runtime_internal.h"
+#include "packet_adventure/ui_render.h"
+
+#ifndef PA_BUILD_ID
+#define PA_BUILD_ID "dev"
+#endif
+
+#define PA_PANEL_BG 0
+#define PA_PANEL_EDGE 1
+#define PA_PACKET_CORE 2
+#define PA_PACKET_GLOW 3
+#define PA_NODE_CORE 4
+#define PA_NODE_GLOW 5
+#define PA_STATUS_TEXT 6
+#define PA_STATUS_ACCENT 7
+#define PA_LOG_TEXT 8
+#define PA_SWEEP_COLOR 9
+#define PA_VOID_COLOR 10
+
+static int pa_mf_strength(const PaApp *app, int x, int y);
+static void pa_generate_world(PaApp *app);
+static void pa_advance_layer(PaApp *app);
+static void pa_try_move(PaApp *app, int dx, int dy);
+static void pa_adjust_packet_field(PaApp *app, int delta);
+static bool pa_pf_contains_cell(const PaApp *app, int cell_x, int cell_y);
+static void pa_update_packet_field(PaApp *app);
+
+static const PaOperatorProfile k_operator_profiles[PA_OP_COUNT] = {
+    {1u, 1u, -1,  1}, /* FLOW */
+    {1u, 1u,  1,  0}, /* CONNECT */
+    {1u, 1u, -2,  2}, /* DISSOLVE */
+    {1u, 1u,  2, -1}, /* ENCODE */
+    {1u, 1u,  0,  2}, /* CHOOSE */
+    {1u, 1u,  0, -1}, /* OBSERVE */
+    {1u, 1u,  1,  1}, /* CYCLE */
+    {1u, 1u,  2,  0}, /* LOGIC */
+    {1u, 1u,  2,  1}, /* RUNTIME */
+    {1u, 1u,  1,  0}, /* MANIFEST */
+};
+
+static int pa_sweep_last_column(uint32_t phase) {
+    return (int)(((((uint32_t)phase + 1u) * (uint32_t)PA_WORLD_COLS) - 1u) / PA_SWEEP_PERIOD);
+}
+
+static uint32_t pa_color_theme(int id) {
+    switch (id) {
+        case PA_PANEL_BG: return pa_rgb(4, 8, 11);
+        case PA_PANEL_EDGE: return pa_rgb(18, 42, 48);
+        case PA_PACKET_CORE: return pa_rgb(255, 255, 255);
+        case PA_PACKET_GLOW: return pa_rgb(118, 230, 255);
+        case PA_NODE_CORE: return pa_rgb(255, 170, 58);
+        case PA_NODE_GLOW: return pa_rgb(255, 238, 176);
+        case PA_STATUS_TEXT: return pa_rgb(215, 228, 230);
+        case PA_STATUS_ACCENT: return pa_rgb(255, 118, 62);
+        case PA_LOG_TEXT: return pa_rgb(144, 228, 255);
+        case PA_SWEEP_COLOR: return pa_rgb(255, 255, 255);
+        case PA_VOID_COLOR: return pa_rgb(0, 0, 0);
+        default: return pa_rgb(255, 0, 255);
+    }
+}
+
+/* The current renderer/theme stack was tuned under a red/blue-swapped display
+   interpretation. Operator colors are canon-facing and must appear on-screen
+   exactly as specified in operator_color_canon.md, so encode them through this
+   helper instead of changing the whole project's palette model at once. */
+static uint32_t pa_operator_rgb(unsigned int r, unsigned int g, unsigned int b) {
+    return pa_rgb(b, g, r);
+}
+
+static uint32_t pa_operator_color(PaOperatorType op) {
+    switch (op) {
+        /* Canonical colors from claude/operator_color_canon.md */
+        case PA_OP_FLOW: return pa_operator_rgb(46, 206, 255);
+        case PA_OP_CONNECT: return pa_operator_rgb(255, 220, 60);
+        case PA_OP_DISSOLVE: return pa_operator_rgb(190, 80, 255);
+        case PA_OP_ENCODE: return pa_operator_rgb(80, 160, 255);
+        case PA_OP_CHOOSE: return pa_operator_rgb(255, 58, 58);
+        case PA_OP_OBSERVE: return pa_operator_rgb(240, 245, 255);
+        case PA_OP_CYCLE: return pa_operator_rgb(255, 160, 40);
+        case PA_OP_LOGIC: return pa_operator_rgb(80, 255, 120);
+        case PA_OP_RUNTIME: return pa_operator_rgb(90, 100, 180);
+        case PA_OP_MANIFEST: return pa_operator_rgb(255, 240, 200);
+        default: return pa_operator_rgb(255, 255, 255);
+    }
+}
+
+static uint32_t pa_dim(uint32_t color, unsigned int numerator, unsigned int denominator) {
+    unsigned int r = color & 0xFFu;
+    unsigned int g = (color >> 8) & 0xFFu;
+    unsigned int b = (color >> 16) & 0xFFu;
+
+    if (denominator == 0u) {
+        denominator = 1u;
+    }
+
+    return pa_rgb(
+        (r * numerator) / denominator,
+        (g * numerator) / denominator,
+        (b * numerator) / denominator
+    );
+}
+
+static uint32_t pa_add_rgb(uint32_t color, int dr, int dg, int db) {
+    int r = (int)(color & 0xFFu) + dr;
+    int g = (int)((color >> 8) & 0xFFu) + dg;
+    int b = (int)((color >> 16) & 0xFFu) + db;
+
+    if (r < 0) {
+        r = 0;
+    } else if (r > 255) {
+        r = 255;
+    }
+    if (g < 0) {
+        g = 0;
+    } else if (g > 255) {
+        g = 255;
+    }
+    if (b < 0) {
+        b = 0;
+    } else if (b > 255) {
+        b = 255;
+    }
+    return pa_rgb((unsigned int)r, (unsigned int)g, (unsigned int)b);
+}
+
+uint32_t pa_lcg_next(uint32_t *state) {
+    *state = (*state * 1664525u) + 1013904223u;
+    return *state;
+}
+
+int pa_rand_range(uint32_t *state, int min_value, int max_value) {
+    uint32_t span = (uint32_t)(max_value - min_value + 1);
+    return min_value + (int)(pa_lcg_next(state) % span);
+}
+
+int pa_clamp(int value, int min_value, int max_value) {
+    if (value < min_value) {
+        return min_value;
+    }
+    if (value > max_value) {
+        return max_value;
+    }
+    return value;
+}
+
+int pa_wrap_coord(int value, int size) {
+    if (size <= 0) {
+        return 0;
+    }
+    value %= size;
+    if (value < 0) {
+        value += size;
+    }
+    return value;
+}
+
+int pa_torus_delta(int from, int to, int size) {
+    int delta = to - from;
+    int alt;
+
+    if (delta > (size / 2)) {
+        delta -= size;
+    } else if (delta < -(size / 2)) {
+        delta += size;
+    }
+
+    alt = delta > 0 ? delta - size : delta + size;
+    if ((alt < 0 ? -alt : alt) < (delta < 0 ? -delta : delta)) {
+        delta = alt;
+    }
+
+    return delta;
+}
+
+int pa_torus_lerp(int from, int to, int step, int steps, int size) {
+    int delta = pa_torus_delta(from, to, size);
+    return pa_wrap_coord(from + ((delta * step) / steps), size);
+}
+
+uint32_t pa_chaos_seed_from_calm(const PaApp *app) {
+    uint32_t signature = 2166136261u;
+    int x;
+    int y;
+
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        for (x = 0; x < PA_WORLD_COLS; ++x) {
+            if (!app->calm[y][x]) {
+                continue;
+            }
+            signature ^= (uint32_t)(x * 3 + y * 5 + ((int)app->operators[y][x] * 17));
+            signature *= 16777619u;
+        }
+    }
+
+    return signature;
+}
+
+const PaOperatorProfile *pa_operator_profile(PaOperatorType op) {
+    static const PaOperatorProfile k_fallback = {0u, 0u, 0, 0};
+
+    if (op < 0 || op >= PA_OP_COUNT) {
+        return &k_fallback;
+    }
+    return &k_operator_profiles[op];
+}
+
+bool pa_operator_world_enabled(PaOperatorType op) {
+    return pa_operator_profile(op)->world_strength > 0u;
+}
+
+bool pa_operator_process_enabled(PaOperatorType op) {
+    return pa_operator_profile(op)->process_strength > 0u;
+}
+
+bool pa_operator_allowed(PaOperatorType a, PaOperatorType b) {
+    static const uint16_t k_mask[PA_OP_COUNT] = {
+        (1u << PA_OP_CONNECT) | (1u << PA_OP_DISSOLVE),
+        (1u << PA_OP_FLOW) | (1u << PA_OP_ENCODE) | (1u << PA_OP_CHOOSE),
+        (1u << PA_OP_FLOW) | (1u << PA_OP_ENCODE),
+        (1u << PA_OP_CONNECT) | (1u << PA_OP_DISSOLVE) | (1u << PA_OP_CHOOSE) | (1u << PA_OP_OBSERVE) | (1u << PA_OP_CYCLE),
+        (1u << PA_OP_CONNECT) | (1u << PA_OP_ENCODE) | (1u << PA_OP_OBSERVE) | (1u << PA_OP_LOGIC),
+        (1u << PA_OP_ENCODE) | (1u << PA_OP_CHOOSE) | (1u << PA_OP_CYCLE) | (1u << PA_OP_LOGIC) | (1u << PA_OP_RUNTIME),
+        (1u << PA_OP_ENCODE) | (1u << PA_OP_OBSERVE) | (1u << PA_OP_LOGIC) | (1u << PA_OP_RUNTIME),
+        (1u << PA_OP_CHOOSE) | (1u << PA_OP_OBSERVE) | (1u << PA_OP_CYCLE) | (1u << PA_OP_RUNTIME) | (1u << PA_OP_MANIFEST),
+        (1u << PA_OP_OBSERVE) | (1u << PA_OP_CYCLE) | (1u << PA_OP_LOGIC) | (1u << PA_OP_MANIFEST),
+        (1u << PA_OP_LOGIC) | (1u << PA_OP_RUNTIME),
+    };
+
+    if (a < 0 || a >= PA_OP_COUNT || b < 0 || b >= PA_OP_COUNT) {
+        return false;
+    }
+    return (k_mask[a] & (1u << b)) != 0u;
+}
+
+PaZoneType pa_operator_zone(PaOperatorType op) {
+    switch (op) {
+        case PA_OP_CONNECT:
+        case PA_OP_OBSERVE:
+        case PA_OP_RUNTIME:
+            return PA_ZONE_CALM;
+        case PA_OP_ENCODE:
+        case PA_OP_CHOOSE:
+        case PA_OP_CYCLE:
+        case PA_OP_LOGIC:
+            return PA_ZONE_BOUNDARY;
+        case PA_OP_FLOW:
+        case PA_OP_DISSOLVE:
+        case PA_OP_MANIFEST:
+        default:
+            return PA_ZONE_CHAOS;
+    }
+}
+
+void pa_select_path(PaOperatorType *ops, uint32_t *seed) {
+    PaOperatorType late_ops[3] = {PA_OP_CYCLE, PA_OP_LOGIC, PA_OP_RUNTIME};
+    PaOperatorType branch_ops[3] = {PA_OP_DISSOLVE, PA_OP_CHOOSE, PA_OP_RUNTIME};
+    PaOperatorType fallback = PA_OP_FLOW;
+    int i;
+
+    for (i = 0; i < PA_OP_COUNT; ++i) {
+        if (pa_operator_world_enabled((PaOperatorType)i)) {
+            fallback = (PaOperatorType)i;
+            break;
+        }
+    }
+
+    ops[0] = pa_operator_world_enabled(PA_OP_FLOW) ? PA_OP_FLOW : fallback;
+    ops[1] = pa_operator_world_enabled(PA_OP_CONNECT) ? PA_OP_CONNECT : ops[0];
+    ops[2] = pa_operator_world_enabled(PA_OP_ENCODE) ? PA_OP_ENCODE : ops[1];
+    ops[3] = pa_operator_world_enabled(PA_OP_OBSERVE) ? PA_OP_OBSERVE : ops[2];
+    ops[4] = fallback;
+    ops[5] = pa_operator_world_enabled(PA_OP_MANIFEST) ? PA_OP_MANIFEST : ops[3];
+    ops[6] = fallback;
+
+    for (i = 0; i < 8; ++i) {
+        PaOperatorType candidate = late_ops[pa_rand_range(seed, 0, 2)];
+
+        if (pa_operator_world_enabled(candidate)) {
+            ops[4] = candidate;
+            break;
+        }
+    }
+
+    for (i = 0; i < 8; ++i) {
+        PaOperatorType candidate = branch_ops[pa_rand_range(seed, 0, 2)];
+
+        if (pa_operator_world_enabled(candidate)) {
+            ops[6] = candidate;
+            break;
+        }
+    }
+
+    if (ops[4] == PA_OP_RUNTIME && ops[6] == PA_OP_RUNTIME) {
+        ops[6] = pa_operator_world_enabled(PA_OP_CHOOSE) ? PA_OP_CHOOSE : ops[6];
+    }
+}
+
+unsigned int pa_cell_noise(int x, int y, int salt) {
+    uint32_t v = (uint32_t)(x * 1103515245u) ^ (uint32_t)(y * 12345u) ^ (uint32_t)(salt * 2654435761u);
+    v ^= v >> 13;
+    v *= 1274126177u;
+    v ^= v >> 16;
+    return v & 255u;
+}
+
+PaOperatorType pa_find_bridge_operator(PaOperatorType a, PaOperatorType b) {
+    static const PaOperatorType k_preferred[] = {
+        /* Keep OBSERVE away from the front: it is too globally compatible
+         * and otherwise becomes the default repair operator everywhere. */
+        PA_OP_ENCODE, PA_OP_CYCLE, PA_OP_CONNECT, PA_OP_RUNTIME, PA_OP_LOGIC,
+        PA_OP_OBSERVE, PA_OP_CHOOSE, PA_OP_DISSOLVE, PA_OP_FLOW, PA_OP_MANIFEST
+    };
+    unsigned int i;
+
+    if (pa_operator_allowed(a, b)) {
+        return b;
+    }
+
+    for (i = 0; i < sizeof(k_preferred) / sizeof(k_preferred[0]); ++i) {
+        PaOperatorType c = k_preferred[i];
+
+        if (pa_operator_allowed(a, c) && pa_operator_allowed(c, b)) {
+            return c;
+        }
+    }
+
+    return a;
+}
+
+void pa_add_region_seeds(PaZoneCenter *centers, int *count, const PaRegionPlan *plan, uint32_t *seed) {
+    int i;
+    const PaOperatorProfile *profile = pa_operator_profile(plan->op);
+
+    if (profile->world_strength == 0u) {
+        return;
+    }
+
+    for (i = 0; i < plan->copies; ++i) {
+        int dx = 0;
+        int dy = 0;
+
+        if (plan->spread_x > 0) {
+            dx = pa_rand_range(seed, -plan->spread_x, plan->spread_x);
+        }
+        if (plan->spread_y > 0) {
+            dy = pa_rand_range(seed, -plan->spread_y, plan->spread_y);
+        }
+
+        centers[*count].op = plan->op;
+        centers[*count].x = pa_clamp(plan->anchor_x + dx, 1, PA_WORLD_COLS - 2);
+        centers[*count].y = pa_clamp(plan->anchor_y + dy, 1, PA_WORLD_ROWS - 2);
+        *count += 1;
+    }
+}
+
+static PaRect pa_observe_rect(void) {
+    return (PaRect){88, 20, 240, 240};
+}
+
+static int pa_cell_w(void) {
+    return 16;
+}
+
+static int pa_cell_h(void) {
+    return 16;
+}
+
+static void pa_view_to_screen(int view_x, int view_y, int *screen_x, int *screen_y) {
+    PaRect observe = pa_observe_rect();
+    int inset_x = pa_cell_w() / 2;
+    int inset_y = pa_cell_h() / 2;
+
+    *screen_x = observe.x + inset_x + (view_x * pa_cell_w()) + (pa_cell_w() / 2);
+    *screen_y = observe.y + inset_y + (view_y * pa_cell_h()) + (pa_cell_h() / 2);
+}
+
+static int pa_camera_x(const PaApp *app) {
+    return pa_wrap_coord(app->packet_x - (PA_VIEW_COLS / 2), PA_WORLD_COLS);
+}
+
+static int pa_camera_y(const PaApp *app) {
+    return pa_wrap_coord(app->packet_y - (PA_VIEW_ROWS / 2), PA_WORLD_ROWS);
+}
+
+static bool pa_world_to_view(int cam, int world, int size, int span, int *view_out) {
+    int delta = pa_torus_delta(cam, world, size);
+
+    if (delta < 0 || delta >= span) {
+        return false;
+    }
+    *view_out = delta;
+    return true;
+}
+
+static int pa_mf_strength(const PaApp *app, int x, int y) {
+    return pa_manifest_mf_strength_impl(app, x, y);
+}
+
+
+static void pa_generate_world(PaApp *app) {
+    pa_world_generate_impl(app);
+}
+
+static void pa_advance_layer(PaApp *app) {
+    pa_world_advance_layer_impl(app);
+}
+
+static void pa_try_move(PaApp *app, int dx, int dy) {
+    pa_packet_try_move_impl(app, dx, dy);
+}
+
+static void pa_adjust_packet_field(PaApp *app, int delta) {
+    pa_packet_adjust_field_impl(app, delta);
+}
+
+int pa_pf_metric(int dx, int dy) {
+    int adx = dx < 0 ? -dx : dx;
+    int ady = dy < 0 ? -dy : dy;
+    int major = adx > ady ? adx : ady;
+    int minor = adx > ady ? ady : adx;
+    return (major * 2) + minor;
+}
+
+static bool pa_pf_contains_cell(const PaApp *app, int cell_x, int cell_y) {
+    return pa_packet_pf_contains_cell_impl(app, cell_x, cell_y);
+}
+
+static void pa_update_packet_field(PaApp *app) {
+    pa_packet_update_field_impl(app);
+}
+
+static void pa_draw_visible_world(PaSurface *surface, const PaApp *app) {
+    int cam_x = pa_camera_x(app);
+    int cam_y = pa_camera_y(app);
+    uint32_t sweep = app->sweep_frame % PA_SWEEP_PERIOD;
+    int sweep_world_x = (int)((sweep * (uint32_t)(PA_WORLD_COLS - 1)) / PA_SWEEP_PERIOD);
+    uint32_t pw_phase = app->frame % PA_PW_PERIOD;
+    int pw_front = (int)((pw_phase * (uint32_t)(app->packet_field_radius * 2 + 1)) / PA_PW_PERIOD);
+    int pw_pulse = (int)(pw_phase < (PA_PW_PERIOD / 2u) ? pw_phase : (PA_PW_PERIOD - pw_phase));
+    int vy;
+    int vx;
+
+    for (vy = 0; vy < PA_VIEW_ROWS; ++vy) {
+        for (vx = 0; vx < PA_VIEW_COLS; ++vx) {
+            int wx = pa_wrap_coord(cam_x + vx, PA_WORLD_COLS);
+            int wy = pa_wrap_coord(cam_y + vy, PA_WORLD_ROWS);
+            int sx;
+            int sy;
+            PaOperatorType op;
+            uint32_t base;
+            uint32_t center_base;
+            uint32_t density_signal;
+            uint32_t density_glow;
+            int wave_dx;
+            int pf_ring;
+            int density;
+            int mf_strength;
+            bool in_pf;
+            bool sw_front;
+            bool sw_tail;
+            bool pw_live;
+            bool pw_front_cell;
+
+            pa_view_to_screen(vx, vy, &sx, &sy);
+
+            if (app->tiles[wy][wx] == PA_TILE_WALL) {
+                pa_draw_line(surface, sx - 7, sy - 7, sx + 7, sy - 7, pa_color_theme(PA_PANEL_EDGE));
+                pa_draw_line(surface, sx + 7, sy - 7, sx + 7, sy + 7, pa_color_theme(PA_PANEL_EDGE));
+                pa_draw_line(surface, sx + 7, sy + 7, sx - 7, sy + 7, pa_color_theme(PA_PANEL_EDGE));
+                pa_draw_line(surface, sx - 7, sy + 7, sx - 7, sy - 7, pa_color_theme(PA_PANEL_EDGE));
+                continue;
+            }
+
+            op = (PaOperatorType)app->operators[wy][wx];
+            base = pa_operator_color(op);
+            center_base = pa_dim(base, 2u, 10u);
+            density = (int)app->local_density[wy][wx];
+            density_signal = pa_dim(pa_add_rgb(base, 6, 8, 10), (unsigned int)(2 + (density / 32)), 18u);
+            density_glow = pa_dim(pa_add_rgb(base, 18, 22, 26), (unsigned int)(2 + (density / 20)), 20u);
+            wave_dx = wx - sweep_world_x;
+            in_pf = pa_pf_contains_cell(app, wx, wy);
+            pf_ring = pa_pf_metric(wx - app->packet_x, wy - app->packet_y) / 2;
+            mf_strength = pa_mf_strength(app, wx, wy);
+            sw_front = wave_dx <= 0 && wave_dx > -2;
+            sw_tail = wave_dx <= 0 && wave_dx > -8;
+            pw_live = in_pf && app->calm[wy][wx];
+            pw_front_cell = pw_live && pf_ring == pw_front;
+
+            if (!app->calm[wy][wx]) {
+                if (mf_strength == 0) {
+                    pa_fill_rect(surface, (PaRect){sx, sy, 1, 1}, pa_color_theme(PA_VOID_COLOR));
+                    continue;
+                } else if (mf_strength == 1) {
+                    center_base = pa_dim(center_base, 2u, 3u);
+                    density_signal = pa_dim(density_signal, 1u, 2u);
+                    density_glow = pa_dim(density_glow, 1u, 2u);
+                }
+            }
+
+            pa_fill_rect(surface, (PaRect){sx, sy, 1, 1}, pa_color_theme(PA_VOID_COLOR));
+
+            if (app->calm[wy][wx]) {
+                uint32_t calm_signal = pa_dim(pa_add_rgb(base, 12, 12, 10), 5u, 10u);
+
+                if (sw_front) {
+                    pa_fill_rect(surface, (PaRect){sx - 1, sy - 1, 3, 3}, pa_dim(calm_signal, 8u, 10u));
+                } else if (sw_tail) {
+                    pa_fill_rect(surface, (PaRect){sx, sy, 2, 2}, pa_dim(calm_signal, 6u, 10u));
+                } else {
+                    pa_fill_rect(surface, (PaRect){sx, sy, 2, 2}, pa_dim(calm_signal, 4u, 10u));
+                }
+
+                if (pw_live) {
+                    unsigned int pulse_strength = 2u + (unsigned int)(pw_pulse / 24);
+                    uint32_t pulse_color = pa_dim(pa_add_rgb(pa_color_theme(PA_PACKET_GLOW), 10, 6, 0), pulse_strength, 12u);
+
+                    if (pw_front_cell) {
+                        pa_fill_rect(surface, (PaRect){sx - 1, sy - 1, 3, 3}, pa_dim(pa_add_rgb(pa_color_theme(PA_PACKET_GLOW), 26, 14, 0), 9u, 12u));
+                    } else if (pf_ring < pw_front) {
+                        pa_fill_rect(surface, (PaRect){sx, sy, 1, 1}, pulse_color);
+                    }
+                }
+            } else if (app->manifested[wy][wx] && mf_strength >= 1) {
+                if (mf_strength >= 3) {
+                    pa_fill_rect(surface, (PaRect){sx, sy, 2, 2}, pa_dim(pa_add_rgb(center_base, -2, 4, 10), 7u, 10u));
+                    if (density >= 96) {
+                        pa_fill_rect(surface, (PaRect){sx + 1, sy + 1, 1, 1}, density_signal);
+                    }
+                } else if (mf_strength == 2) {
+                    pa_fill_rect(surface, (PaRect){sx, sy, 1, 1}, pa_dim(pa_add_rgb(center_base, -4, 2, 8), 6u, 10u));
+                    if (density >= 112) {
+                        pa_fill_rect(surface, (PaRect){sx + 1, sy + 1, 1, 1}, density_signal);
+                    }
+                } else {
+                    pa_fill_rect(surface, (PaRect){sx, sy, 1, 1}, pa_dim(center_base, 3u, 4u));
+                }
+            } else if (sw_front && mf_strength >= 1) {
+                pa_fill_rect(surface, (PaRect){sx - 1, sy - 1, 3, 3}, pa_dim(pa_add_rgb(base, 10, 12, 12), 6u, 10u));
+                if (density >= 56) {
+                    pa_fill_rect(surface, (PaRect){sx, sy, 1, 1}, density_glow);
+                }
+            } else if (sw_tail && mf_strength >= 1) {
+                pa_fill_rect(surface, (PaRect){sx, sy, 2, 2}, pa_dim(pa_add_rgb(base, 4, 6, 10), 4u, 10u));
+                if (density >= 96) {
+                    pa_fill_rect(surface, (PaRect){sx + 1, sy + 1, 1, 1}, density_signal);
+                }
+            } else if (mf_strength >= 2 && density >= 120) {
+                pa_fill_rect(surface, (PaRect){sx, sy, 1, 1}, density_signal);
+            } else {
+                pa_fill_rect(surface, (PaRect){sx, sy, 1, 1}, center_base);
+            }
+        }
+    }
+}
+
+static void pa_draw_entities(PaSurface *surface, const PaApp *app) {
+    int cam_x = pa_camera_x(app);
+    int cam_y = pa_camera_y(app);
+    int pulse = (int)(app->frame % 24u);
+    int glow = pulse < 12 ? pulse : (24 - pulse);
+    {
+        int view_x;
+        int view_y;
+
+        if (pa_world_to_view(cam_x, app->transition_x, PA_WORLD_COLS, PA_VIEW_COLS, &view_x) &&
+            pa_world_to_view(cam_y, app->transition_y, PA_WORLD_ROWS, PA_VIEW_ROWS, &view_y)) {
+            int sx;
+            int sy;
+
+            pa_view_to_screen(view_x, view_y, &sx, &sy);
+            pa_fill_rect(surface, (PaRect){sx - 3, sy - 3, 7, 7}, pa_dim(pa_color_theme(PA_NODE_GLOW), (unsigned int)(4 + glow), 16u));
+            pa_fill_rect(surface, (PaRect){sx - 1, sy - 1, 3, 3}, pa_color_theme(PA_NODE_CORE));
+        }
+    }
+
+    {
+        int view_x;
+        int view_y;
+        int sx;
+        int sy;
+
+        if (!pa_world_to_view(cam_x, app->packet_x, PA_WORLD_COLS, PA_VIEW_COLS, &view_x) ||
+            !pa_world_to_view(cam_y, app->packet_y, PA_WORLD_ROWS, PA_VIEW_ROWS, &view_y)) {
+            return;
+        }
+
+        pa_view_to_screen(view_x, view_y, &sx, &sy);
+        pa_fill_rect(surface, (PaRect){sx - 3, sy - 3, 7, 7}, pa_dim(pa_color_theme(PA_NODE_GLOW), (unsigned int)(4 + glow), 16u));
+        pa_fill_rect(surface, (PaRect){sx - 3, sy - 3, 7, 7}, pa_dim(pa_color_theme(PA_PACKET_GLOW), (unsigned int)(5 + glow), 16u));
+        pa_fill_rect(surface, (PaRect){sx - 1, sy - 1, 3, 3}, pa_color_theme(PA_PACKET_CORE));
+    }
+}
+
+void pa_app_init(PaApp *app) {
+    memset(app, 0, sizeof(*app));
+    app->packet_field_radius = 2;
+    app->world_seed = 0x2A6D365Bu;
+    pa_generate_world(app);
+    pa_world_regen_begin_cycle_impl(app);
+}
+
+void pa_app_set_input(PaApp *app, uint32_t input_mask) {
+    app->input_mask = input_mask;
+}
+
+void pa_app_update(PaApp *app) {
+    uint32_t pressed = app->input_mask & ~app->prev_input_mask;
+    uint32_t prev_sweep_frame = app->sweep_frame;
+
+    if ((pressed & PA_INPUT_MAP_TOGGLE) != 0u) {
+        app->map_open = !app->map_open;
+    }
+    if ((pressed & PA_INPUT_REGEN) != 0u) {
+        app->world_seed = (app->world_seed * 1664525u) + 1013904223u + (app->frame | 1u);
+        pa_generate_world(app);
+    }
+    if ((pressed & PA_INPUT_SW_TOGGLE) != 0u) {
+        app->sweep_paused = !app->sweep_paused;
+    }
+    if ((pressed & PA_INPUT_SW_SLOWER) != 0u) {
+        if (app->sweep_speed > 1u) {
+            app->sweep_speed -= 1u;
+        }
+    }
+    if ((pressed & PA_INPUT_SW_FASTER) != 0u) {
+        if (app->sweep_speed < 8u) {
+            app->sweep_speed += 1u;
+        }
+    }
+    app->prev_input_mask = app->input_mask;
+
+    app->frame += 1u;
+
+    {
+        if (!app->sweep_paused) {
+            app->sweep_frame += app->sweep_speed;
+        } else if ((pressed & PA_INPUT_SW_STEP) != 0u) {
+            app->sweep_frame += 1u;
+        }
+    }
+
+    {
+        uint32_t prev_cycle = prev_sweep_frame / PA_SWEEP_PERIOD;
+        uint32_t sweep_cycle = app->sweep_frame / PA_SWEEP_PERIOD;
+        uint32_t prev_phase = prev_sweep_frame % PA_SWEEP_PERIOD;
+        uint32_t phase = app->sweep_frame % PA_SWEEP_PERIOD;
+        int start_col;
+        int end_col;
+        int col;
+
+        if (prev_cycle != app->sw_cycle_count) {
+            pa_world_regen_begin_cycle_impl(app);
+            app->sw_cycle_count = prev_cycle;
+        }
+
+        if (sweep_cycle != prev_cycle) {
+            start_col = pa_sweep_last_column(prev_phase) + 1;
+            for (col = start_col; col < PA_WORLD_COLS; ++col) {
+                pa_world_regen_column_impl(app, col);
+            }
+            pa_world_regen_end_cycle_impl(app);
+            app->sw_cycle_count = sweep_cycle;
+            pa_world_regen_begin_cycle_impl(app);
+            prev_phase = 0u;
+        }
+
+        start_col = pa_sweep_last_column(prev_phase) + 1;
+        end_col = pa_sweep_last_column(phase);
+        if (prev_sweep_frame == 0u && app->sweep_frame == 0u) {
+            start_col = 0;
+            end_col = 0;
+        }
+        for (col = start_col; col <= end_col; ++col) {
+            pa_world_regen_column_impl(app, col);
+        }
+    }
+
+    if (app->map_open) {
+        return;
+    }
+
+    if (app->move_cooldown > 0u) {
+        app->move_cooldown -= 1u;
+    }
+    if (app->param_cooldown > 0u) {
+        app->param_cooldown -= 1u;
+    }
+
+    if (app->param_cooldown == 0u) {
+        if ((app->input_mask & PA_INPUT_PARAM_DEC) != 0u) {
+            pa_adjust_packet_field(app, -1);
+            app->param_cooldown = PA_PARAM_COOLDOWN;
+        } else if ((app->input_mask & PA_INPUT_PARAM_INC) != 0u) {
+            pa_adjust_packet_field(app, 1);
+            app->param_cooldown = PA_PARAM_COOLDOWN;
+        }
+    }
+
+    if (app->transition_reached) {
+        pa_advance_layer(app);
+        return;
+    }
+
+    pa_update_packet_field(app);
+
+    if (app->move_cooldown == 0u) {
+        if ((app->input_mask & PA_INPUT_UP) != 0u) {
+            pa_try_move(app, 0, -1);
+            app->move_cooldown = PA_MOVE_COOLDOWN;
+        } else if ((app->input_mask & PA_INPUT_DOWN) != 0u) {
+            pa_try_move(app, 0, 1);
+            app->move_cooldown = PA_MOVE_COOLDOWN;
+        } else if ((app->input_mask & PA_INPUT_LEFT) != 0u) {
+            pa_try_move(app, -1, 0);
+            app->move_cooldown = PA_MOVE_COOLDOWN;
+        } else if ((app->input_mask & PA_INPUT_RIGHT) != 0u) {
+            pa_try_move(app, 1, 0);
+            app->move_cooldown = PA_MOVE_COOLDOWN;
+        }
+    }
+
+    pa_update_packet_field(app);
+}
+
+void pa_app_render(const PaApp *app, PaSurface *surface) {
+    if (app->map_open) {
+        pa_ui_render_debug_map(surface, app);
+        return;
+    }
+
+    pa_ui_render_copy_cache(surface, app);
+    pa_draw_visible_world(surface, app);
+    pa_draw_entities(surface, app);
+    pa_ui_render_status(surface, app);
+    pa_ui_render_log(surface, app);
+}
+
+const char *pa_app_build_id(void) {
+    return PA_BUILD_ID;
+}
+
+```
+
+================================================================
+FILE: packetcli2machine/src/world_runtime/world_runtime.c
+================================================================
+
+```c
+#include <limits.h>
+#include <stdint.h>
+#include <string.h>
+
+#include "packet_adventure/runtime_internal.h"
+
+static PaZoneCenter g_regen_centers[96];
+static int g_regen_center_count = 0;
+static bool g_regen_calm_snapshot[PA_WORLD_ROWS][PA_WORLD_COLS];
+static bool g_regen_column_done[PA_WORLD_COLS];
+static bool g_regen_active = false;
+static uint8_t g_zone_scratch[PA_WORLD_ROWS][PA_WORLD_COLS];
+enum {
+    PA_MIN_ZONE_THICKNESS = 20
+};
+static const uint8_t k_operator_rates[PA_OP_COUNT] = {
+    2, 1, 4, 3, 3, 0, 2, 1, 1, 5
+};
+
+static void pa_reset_regen_state(void) {
+    g_regen_center_count = 0;
+    memset(g_regen_calm_snapshot, 0, sizeof(g_regen_calm_snapshot));
+    memset(g_regen_column_done, 0, sizeof(g_regen_column_done));
+    g_regen_active = false;
+}
+
+static uint32_t pa_debug_world_hash(const PaApp *app) {
+    uint32_t hash = 2166136261u;
+    int x;
+    int y;
+
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        for (x = 0; x < PA_WORLD_COLS; ++x) {
+            hash ^= (uint32_t)app->operators[y][x];
+            hash *= 16777619u;
+        }
+    }
+
+    return hash;
+}
+
+static void pa_capture_base_operator_area(PaApp *app) {
+    int x;
+    int y;
+
+    memset(app->base_operator_area, 0, sizeof(app->base_operator_area));
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        for (x = 0; x < PA_WORLD_COLS; ++x) {
+            PaOperatorType op = (PaOperatorType)app->operators[y][x];
+
+            app->base_operator_area[op] += 1u;
+        }
+    }
+}
+
+static PaOperatorType pa_resolve_operator_thickness(const PaApp *app, int x, int y, PaOperatorType candidate) {
+    unsigned int counts[PA_OP_COUNT] = {0};
+    PaOperatorType dominant = candidate;
+    unsigned int candidate_count;
+    unsigned int dominant_count = 0u;
+    int horizontal_run = 1;
+    int vertical_run = 1;
+    int step;
+    int nx;
+    int ny;
+
+    for (step = 1; step < PA_MIN_ZONE_THICKNESS; ++step) {
+        if ((PaOperatorType)app->operators[y][pa_wrap_coord(x - step, PA_WORLD_COLS)] == candidate) {
+            horizontal_run += 1;
+        } else {
+            break;
+        }
+    }
+    for (step = 1; step < PA_MIN_ZONE_THICKNESS; ++step) {
+        if ((PaOperatorType)app->operators[y][pa_wrap_coord(x + step, PA_WORLD_COLS)] == candidate) {
+            horizontal_run += 1;
+        } else {
+            break;
+        }
+    }
+    for (step = 1; step < PA_MIN_ZONE_THICKNESS; ++step) {
+        if ((PaOperatorType)app->operators[pa_wrap_coord(y - step, PA_WORLD_ROWS)][x] == candidate) {
+            vertical_run += 1;
+        } else {
+            break;
+        }
+    }
+    for (step = 1; step < PA_MIN_ZONE_THICKNESS; ++step) {
+        if ((PaOperatorType)app->operators[pa_wrap_coord(y + step, PA_WORLD_ROWS)][x] == candidate) {
+            vertical_run += 1;
+        } else {
+            break;
+        }
+    }
+
+    if (horizontal_run >= PA_MIN_ZONE_THICKNESS || vertical_run >= PA_MIN_ZONE_THICKNESS) {
+        return candidate;
+    }
+
+    for (ny = -(PA_MIN_ZONE_THICKNESS); ny <= PA_MIN_ZONE_THICKNESS; ++ny) {
+        for (nx = -(PA_MIN_ZONE_THICKNESS); nx <= PA_MIN_ZONE_THICKNESS; ++nx) {
+            int sample_y = pa_wrap_coord(y + ny, PA_WORLD_ROWS);
+            int sample_x = pa_wrap_coord(x + nx, PA_WORLD_COLS);
+            PaOperatorType near = (sample_x == x && sample_y == y)
+                ? candidate
+                : (PaOperatorType)app->operators[sample_y][sample_x];
+
+            counts[near] += 1u;
+        }
+    }
+
+    candidate_count = counts[candidate];
+    for (nx = 0; nx < PA_OP_COUNT; ++nx) {
+        if ((PaOperatorType)nx == candidate) {
+            continue;
+        }
+        if (counts[nx] > dominant_count) {
+            dominant_count = counts[nx];
+            dominant = (PaOperatorType)nx;
+        }
+    }
+
+    if (dominant != candidate &&
+        dominant_count >= candidate_count * 2u &&
+        pa_operator_allowed(candidate, dominant) &&
+        pa_operator_allowed(dominant, candidate)) {
+        return dominant;
+    }
+
+    return candidate;
+}
+
+static void pa_consolidate_operator_zones(PaApp *app) {
+    int x;
+    int y;
+
+    memcpy(g_zone_scratch, app->operators, sizeof(g_zone_scratch));
+
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        for (x = 0; x < PA_WORLD_COLS; ++x) {
+            if (app->calm[y][x]) {
+                continue;
+            }
+            g_zone_scratch[y][x] = (uint8_t)pa_resolve_operator_thickness(
+                app, x, y, (PaOperatorType)app->operators[y][x]);
+        }
+    }
+
+    memcpy(app->operators, g_zone_scratch, sizeof(g_zone_scratch));
+}
+
+static void pa_bridge_fix_chaos(PaApp *app) {
+    int x;
+    int y;
+
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        for (x = 0; x < PA_WORLD_COLS; ++x) {
+            int right_x = pa_wrap_coord(x + 1, PA_WORLD_COLS);
+            int down_y = pa_wrap_coord(y + 1, PA_WORLD_ROWS);
+            PaOperatorType op = (PaOperatorType)app->operators[y][x];
+            PaOperatorType right = (PaOperatorType)app->operators[y][right_x];
+            PaOperatorType down = (PaOperatorType)app->operators[down_y][x];
+
+            if (app->calm[y][x]) {
+                continue;
+            }
+
+            if (!pa_operator_allowed(op, right)) {
+                if (!app->calm[y][right_x]) {
+                    app->operators[y][right_x] = (uint8_t)pa_find_bridge_operator(op, right);
+                } else if (!app->calm[y][x]) {
+                    app->operators[y][x] = (uint8_t)pa_find_bridge_operator(right, op);
+                }
+            }
+            if (!pa_operator_allowed(op, down)) {
+                if (!app->calm[down_y][x]) {
+                    app->operators[down_y][x] = (uint8_t)pa_find_bridge_operator(op, down);
+                } else if (!app->calm[y][x]) {
+                    app->operators[y][x] = (uint8_t)pa_find_bridge_operator(down, op);
+                }
+            }
+        }
+    }
+}
+
+static void pa_balance_operator_area(PaApp *app) {
+    uint16_t current_area[PA_OP_COUNT] = {0};
+    int over_op = -1;
+    int under_op = -1;
+    int over_delta = 0;
+    int under_delta = 0;
+    unsigned int local_total = 0u;
+    int x;
+    int y;
+
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        for (x = 0; x < PA_WORLD_COLS; ++x) {
+            if (app->calm[y][x]) {
+                continue;
+            }
+            current_area[app->operators[y][x]] += 1u;
+            local_total += 1u;
+        }
+    }
+
+    if (local_total == 0u) {
+        return;
+    }
+
+    for (x = 0; x < PA_OP_COUNT; ++x) {
+        int baseline = (int)(((uint32_t)app->base_operator_area[x] * local_total) /
+                             (uint32_t)(PA_WORLD_ROWS * PA_WORLD_COLS));
+        int tolerance = baseline / 5;
+        int delta = (int)current_area[x] - baseline;
+
+        if (tolerance < 4) {
+            tolerance = 4;
+        }
+
+        if (delta > tolerance && delta > over_delta) {
+            over_delta = delta;
+            over_op = x;
+        }
+        if (delta < -tolerance && delta < under_delta) {
+            under_delta = delta;
+            under_op = x;
+        }
+    }
+
+    if (over_op < 0 || under_op < 0) {
+        return;
+    }
+
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        for (x = 0; x < PA_WORLD_COLS; ++x) {
+            PaOperatorType current;
+            int nx;
+            int ny;
+
+            if (app->calm[y][x] || pa_manifest_mf_strength_impl(app, x, y) < 2) {
+                continue;
+            }
+            current = (PaOperatorType)app->operators[y][x];
+            if (current != (PaOperatorType)over_op) {
+                continue;
+            }
+
+            for (ny = -1; ny <= 1; ++ny) {
+                for (nx = -1; nx <= 1; ++nx) {
+                    int sample_y = pa_wrap_coord(y + ny, PA_WORLD_ROWS);
+                    int sample_x = pa_wrap_coord(x + nx, PA_WORLD_COLS);
+                    PaOperatorType near = (PaOperatorType)app->operators[sample_y][sample_x];
+
+                    if (near == (PaOperatorType)under_op &&
+                        pa_operator_allowed((PaOperatorType)under_op, current) &&
+                        pa_operator_allowed(current, (PaOperatorType)under_op)) {
+                        app->operators[y][x] = (uint8_t)under_op;
+                        over_delta -= 1;
+                        under_delta += 1;
+                        goto next_cell;
+                    }
+                }
+            }
+
+            if (pa_operator_allowed(current, (PaOperatorType)under_op) &&
+                pa_operator_allowed((PaOperatorType)under_op, current)) {
+                app->operators[y][x] = (uint8_t)under_op;
+                over_delta -= 1;
+                under_delta += 1;
+            }
+
+next_cell:
+            if (over_delta <= 0 || under_delta >= 0) {
+                return;
+            }
+        }
+    }
+}
+
+static void pa_prepare_regen_centers(PaApp *app, uint32_t seed) {
+    PaOperatorType path_ops[7];
+    PaOperatorType late_a;
+    PaOperatorType late_b;
+    PaRegionPlan plans[9];
+    int plan_count = 0;
+    int route_x[6];
+    int route_y[6];
+    int branch_x;
+    int branch_y;
+    int x;
+    int y;
+    int i;
+
+    pa_select_path(path_ops, &seed);
+    late_a = path_ops[4];
+    late_b = (late_a == PA_OP_CYCLE) ? PA_OP_LOGIC : PA_OP_CYCLE;
+    if (late_a == PA_OP_LOGIC) {
+        late_b = PA_OP_RUNTIME;
+    } else if (late_a == PA_OP_RUNTIME) {
+        late_b = PA_OP_LOGIC;
+    }
+
+    for (i = 0; i < 6; ++i) {
+        route_x[i] = pa_torus_lerp(app->packet_x, app->transition_x, i, 5, PA_WORLD_COLS);
+        route_y[i] = pa_torus_lerp(app->packet_y, app->transition_y, i, 5, PA_WORLD_ROWS);
+        route_x[i] = pa_wrap_coord(route_x[i] + pa_rand_range(&seed, -8, 8), PA_WORLD_COLS);
+        route_y[i] = pa_wrap_coord(route_y[i] + pa_rand_range(&seed, -8, 8), PA_WORLD_ROWS);
+    }
+    route_x[0] = app->packet_x;
+    route_y[0] = app->packet_y;
+    route_x[5] = app->transition_x;
+    route_y[5] = app->transition_y;
+
+    plans[plan_count++] = (PaRegionPlan){PA_OP_FLOW, route_x[0], route_y[0], 8, 10, 4};
+    plans[plan_count++] = (PaRegionPlan){PA_OP_CONNECT, route_x[1], route_y[1], 10, 12, 5};
+    plans[plan_count++] = (PaRegionPlan){PA_OP_ENCODE, route_x[2], route_y[2], 10, 12, 5};
+    plans[plan_count++] = (PaRegionPlan){PA_OP_OBSERVE, route_x[3], route_y[3], 10, 12, 5};
+    plans[plan_count++] = (PaRegionPlan){late_a, route_x[4], route_y[4], 10, 12, 5};
+    plans[plan_count++] = (PaRegionPlan){PA_OP_MANIFEST, route_x[5], route_y[5], 8, 10, 4};
+
+    branch_x = pa_wrap_coord(route_x[1] + pa_rand_range(&seed, -24, 24), PA_WORLD_COLS);
+    branch_y = pa_wrap_coord(route_y[1] + pa_rand_range(&seed, -20, 20), PA_WORLD_ROWS);
+    plans[plan_count++] = (PaRegionPlan){PA_OP_DISSOLVE, branch_x, branch_y, 12, 8, 3};
+
+    branch_x = pa_wrap_coord(route_x[3] + pa_rand_range(&seed, -24, 24), PA_WORLD_COLS);
+    branch_y = pa_wrap_coord(route_y[3] + pa_rand_range(&seed, -20, 20), PA_WORLD_ROWS);
+    plans[plan_count++] = (PaRegionPlan){PA_OP_CHOOSE, branch_x, branch_y, 12, 8, 3};
+
+    branch_x = pa_wrap_coord(route_x[4] + pa_rand_range(&seed, -20, 20), PA_WORLD_COLS);
+    branch_y = pa_wrap_coord(route_y[4] + pa_rand_range(&seed, -20, 20), PA_WORLD_ROWS);
+    plans[plan_count++] = (PaRegionPlan){late_b, branch_x, branch_y, 10, 8, 3};
+
+    for (i = 0; i < plan_count; ++i) {
+        pa_add_region_seeds(g_regen_centers, &g_regen_center_count, &plans[i], &seed);
+    }
+
+    for (y = 0; y < PA_WORLD_ROWS && g_regen_center_count < (int)(sizeof(g_regen_centers) / sizeof(g_regen_centers[0])); y += 12) {
+        for (x = 0; x < PA_WORLD_COLS && g_regen_center_count < (int)(sizeof(g_regen_centers) / sizeof(g_regen_centers[0])); x += 12) {
+            if (!g_regen_calm_snapshot[y][x]) {
+                continue;
+            }
+            g_regen_centers[g_regen_center_count].op = (PaOperatorType)app->operators[y][x];
+            g_regen_centers[g_regen_center_count].x = x;
+            g_regen_centers[g_regen_center_count].y = y;
+            g_regen_center_count += 1;
+        }
+    }
+}
+
+static PaOperatorType pa_regen_best_operator(const PaApp *app, uint32_t seed, int x, int y) {
+    int best_score = INT_MAX;
+    PaOperatorType best_op = (PaOperatorType)app->operators[y][x];
+    int i;
+
+    for (i = 0; i < g_regen_center_count; ++i) {
+        int dx = pa_torus_delta(g_regen_centers[i].x, x, PA_WORLD_COLS);
+        int dy = pa_torus_delta(g_regen_centers[i].y, y, PA_WORLD_ROWS);
+        int score = (dx * dx * 2) + (dy * dy * 3) + (int)pa_cell_noise(x, y, i + (int)(seed & 255u));
+
+        if (g_regen_centers[i].op == PA_OP_DISSOLVE) {
+            score += (y > PA_WORLD_ROWS / 2 ? 18 : 0);
+        }
+        if (g_regen_centers[i].op == PA_OP_CHOOSE) {
+            score += (y < PA_WORLD_ROWS / 2 ? 16 : 0);
+        }
+        if (g_regen_calm_snapshot[g_regen_centers[i].y][g_regen_centers[i].x]) {
+            score -= 64;
+        }
+        if (score < best_score) {
+            best_score = score;
+            best_op = g_regen_centers[i].op;
+        }
+    }
+
+    return best_op;
+}
+
+void pa_world_manifest_cell_impl(PaApp *app, int x, int y) {
+    PaOperatorType best_op;
+    PaOperatorType near;
+    int sample_x;
+    int sample_y;
+    int i;
+    static const int k_neighbor_offsets[4][2] = {
+        {-1, 0},
+        {1, 0},
+        {0, -1},
+        {0, 1}
+    };
+
+    x = pa_wrap_coord(x, PA_WORLD_COLS);
+    y = pa_wrap_coord(y, PA_WORLD_ROWS);
+    if (app->calm[y][x] || pa_manifest_mf_strength_impl(app, x, y) == 0) {
+        return;
+    }
+
+    if (!g_regen_active) {
+        pa_world_regen_begin_cycle_impl(app);
+    }
+
+    best_op = pa_regen_best_operator(app, app->regen_cycle_seed, x, y);
+    for (i = 0; i < 4; ++i) {
+        sample_x = pa_wrap_coord(x + k_neighbor_offsets[i][0], PA_WORLD_COLS);
+        sample_y = pa_wrap_coord(y + k_neighbor_offsets[i][1], PA_WORLD_ROWS);
+        if (app->calm[sample_y][sample_x]) {
+            continue;
+        }
+        near = (PaOperatorType)app->operators[sample_y][sample_x];
+        if (!pa_operator_allowed(best_op, near)) {
+            best_op = pa_find_bridge_operator(near, best_op);
+        }
+    }
+
+    best_op = pa_resolve_operator_thickness(app, x, y, best_op);
+    app->operators[y][x] = (uint8_t)best_op;
+    app->zones[y][x] = (uint8_t)pa_operator_zone(best_op);
+    app->local_entropy_rate[y][x] = k_operator_rates[best_op];
+    app->manifested[y][x] = true;
+}
+
+void pa_world_regen_begin_cycle_impl(PaApp *app) {
+    uint32_t calm_seed = pa_chaos_seed_from_calm(app);
+    uint32_t cycle_seed = app->world_seed ^ (app->sw_cycle_count * 2654435761u) ^ calm_seed;
+
+    memcpy(g_regen_calm_snapshot, app->calm, sizeof(g_regen_calm_snapshot));
+    memset(g_regen_column_done, 0, sizeof(g_regen_column_done));
+    g_regen_center_count = 0;
+    app->regen_cycle_seed = cycle_seed;
+    pa_prepare_regen_centers(app, cycle_seed);
+    g_regen_active = true;
+    app->debug_regen_begin_count += 1u;
+    app->debug_regen_columns = 0u;
+    app->debug_regen_changed_cells = 0u;
+    app->debug_regen_last_column = 0u;
+}
+
+void pa_world_regen_column_impl(PaApp *app, int col_x) {
+    int y;
+
+    if (!g_regen_active) {
+        return;
+    }
+
+    col_x = pa_wrap_coord(col_x, PA_WORLD_COLS);
+    if (g_regen_column_done[col_x]) {
+        return;
+    }
+
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        PaOperatorType best_op;
+        PaOperatorType left;
+        PaOperatorType up;
+        PaOperatorType old_op;
+        int strength;
+        int left_x;
+        int up_y;
+
+        if (app->calm[y][col_x]) {
+            continue;
+        }
+
+        strength = pa_manifest_mf_strength_impl(app, col_x, y);
+        if (strength == 0) {
+            continue;
+        }
+
+        old_op = (PaOperatorType)app->operators[y][col_x];
+        best_op = pa_regen_best_operator(app, app->regen_cycle_seed, col_x, y);
+
+        if (best_op != old_op) {
+            app->debug_regen_changed_cells += 1u;
+        }
+
+        app->operators[y][col_x] = (uint8_t)best_op;
+        if (strength == 1) {
+            app->zones[y][col_x] = (uint8_t)pa_operator_zone(best_op);
+            app->local_entropy_rate[y][col_x] = k_operator_rates[best_op];
+            continue;
+        }
+
+        left_x = pa_wrap_coord(col_x - 1, PA_WORLD_COLS);
+        up_y = pa_wrap_coord(y - 1, PA_WORLD_ROWS);
+        left = (PaOperatorType)app->operators[y][left_x];
+        up = (PaOperatorType)app->operators[up_y][col_x];
+
+        if (!pa_operator_allowed(best_op, left) && !app->calm[y][left_x]) {
+            best_op = pa_find_bridge_operator(left, best_op);
+        }
+        if (!pa_operator_allowed(best_op, up) && !app->calm[up_y][col_x]) {
+            best_op = pa_find_bridge_operator(up, best_op);
+        }
+
+        best_op = pa_resolve_operator_thickness(app, col_x, y, best_op);
+        app->operators[y][col_x] = (uint8_t)best_op;
+        app->zones[y][col_x] = (uint8_t)pa_operator_zone(best_op);
+        app->local_entropy_rate[y][col_x] = k_operator_rates[best_op];
+    }
+
+    g_regen_column_done[col_x] = true;
+    app->debug_regen_columns += 1u;
+    app->debug_regen_last_column = (uint8_t)col_x;
+}
+
+void pa_world_regen_end_cycle_impl(PaApp *app) {
+    int x;
+
+    if (!g_regen_active) {
+        return;
+    }
+
+    for (x = 0; x < PA_WORLD_COLS; ++x) {
+        if (!g_regen_column_done[x]) {
+            pa_world_regen_column_impl(app, x);
+        }
+    }
+
+    app->operators[app->packet_y][app->packet_x] = PA_OP_FLOW;
+    app->operators[app->transition_y][app->transition_x] = PA_OP_MANIFEST;
+    app->zones[app->packet_y][app->packet_x] = (uint8_t)pa_operator_zone(PA_OP_FLOW);
+    app->zones[app->transition_y][app->transition_x] = (uint8_t)pa_operator_zone(PA_OP_MANIFEST);
+    app->local_entropy_rate[app->packet_y][app->packet_x] = k_operator_rates[PA_OP_FLOW];
+    app->local_entropy_rate[app->transition_y][app->transition_x] = k_operator_rates[PA_OP_MANIFEST];
+    app->manifested[app->packet_y][app->packet_x] = true;
+    app->manifested[app->transition_y][app->transition_x] = true;
+    app->topology_revision += 1u;
+    app->debug_regen_end_count += 1u;
+    app->debug_regen_last_changed_cells = app->debug_regen_changed_cells;
+    app->debug_world_hash = pa_debug_world_hash(app);
+    g_regen_active = false;
+}
+
+void pa_world_regenerate_chaos_impl(PaApp *app) {
+    pa_world_regen_begin_cycle_impl(app);
+    pa_world_regen_end_cycle_impl(app);
+}
+
+void pa_world_generate_impl(PaApp *app) {
+    uint32_t seed = (app->world_seed != 0u) ? app->world_seed : 0x2A6D365Bu;
+    PaOperatorType path_ops[7];
+    PaOperatorType late_a;
+    PaOperatorType late_b;
+    PaRegionPlan plans[9];
+    PaZoneCenter centers[48];
+    int center_count = 0;
+    int plan_count = 0;
+    int i;
+    int x;
+    int y;
+    int route_x[6];
+    int route_y[6];
+    int start_x;
+    int start_y;
+    int target_x;
+    int target_y;
+    int branch_x;
+    int branch_y;
+
+    memset(app->tiles, 0, sizeof(app->tiles));
+    memset(app->zones, 0, sizeof(app->zones));
+    memset(app->operators, 0, sizeof(app->operators));
+    memset(app->local_entropy_rate, 0, sizeof(app->local_entropy_rate));
+    memset(app->local_density, 0, sizeof(app->local_density));
+    memset(app->manifested, 0, sizeof(app->manifested));
+    memset(app->calm, 0, sizeof(app->calm));
+
+    pa_select_path(path_ops, &seed);
+    late_a = path_ops[4];
+    late_b = (late_a == PA_OP_CYCLE) ? PA_OP_LOGIC : PA_OP_CYCLE;
+    if (late_a == PA_OP_LOGIC) {
+        late_b = PA_OP_RUNTIME;
+    } else if (late_a == PA_OP_RUNTIME) {
+        late_b = PA_OP_LOGIC;
+    }
+
+    start_x = pa_rand_range(&seed, 0, PA_WORLD_COLS - 1);
+    start_y = pa_rand_range(&seed, 0, PA_WORLD_ROWS - 1);
+    do {
+        target_x = pa_rand_range(&seed, 0, PA_WORLD_COLS - 1);
+        target_y = pa_rand_range(&seed, 0, PA_WORLD_ROWS - 1);
+    } while ((((pa_torus_delta(start_x, target_x, PA_WORLD_COLS) < 0 ? -pa_torus_delta(start_x, target_x, PA_WORLD_COLS) : pa_torus_delta(start_x, target_x, PA_WORLD_COLS))) +
+              ((pa_torus_delta(start_y, target_y, PA_WORLD_ROWS) < 0 ? -pa_torus_delta(start_y, target_y, PA_WORLD_ROWS) : pa_torus_delta(start_y, target_y, PA_WORLD_ROWS)))) <
+             ((PA_WORLD_COLS + PA_WORLD_ROWS) / 3));
+
+    for (i = 0; i < 6; ++i) {
+        route_x[i] = pa_torus_lerp(start_x, target_x, i, 5, PA_WORLD_COLS);
+        route_y[i] = pa_torus_lerp(start_y, target_y, i, 5, PA_WORLD_ROWS);
+        route_x[i] = pa_wrap_coord(route_x[i] + pa_rand_range(&seed, -10, 10), PA_WORLD_COLS);
+        route_y[i] = pa_wrap_coord(route_y[i] + pa_rand_range(&seed, -10, 10), PA_WORLD_ROWS);
+    }
+    route_x[0] = start_x;
+    route_y[0] = start_y;
+    route_x[5] = target_x;
+    route_y[5] = target_y;
+
+    plans[plan_count++] = (PaRegionPlan){PA_OP_FLOW, route_x[0], route_y[0], 10, 14, 5};
+    plans[plan_count++] = (PaRegionPlan){PA_OP_CONNECT, route_x[1], route_y[1], 12, 16, 6};
+    plans[plan_count++] = (PaRegionPlan){PA_OP_ENCODE, route_x[2], route_y[2], 12, 16, 6};
+    plans[plan_count++] = (PaRegionPlan){PA_OP_OBSERVE, route_x[3], route_y[3], 12, 16, 6};
+    plans[plan_count++] = (PaRegionPlan){late_a, route_x[4], route_y[4], 12, 16, 6};
+    plans[plan_count++] = (PaRegionPlan){PA_OP_MANIFEST, route_x[5], route_y[5], 10, 12, 4};
+
+    branch_x = pa_wrap_coord(route_x[1] + pa_rand_range(&seed, -28, 28), PA_WORLD_COLS);
+    branch_y = pa_wrap_coord(route_y[1] + pa_rand_range(&seed, -24, 24), PA_WORLD_ROWS);
+    plans[plan_count++] = (PaRegionPlan){PA_OP_DISSOLVE, branch_x, branch_y, 16, 10, 4};
+
+    branch_x = pa_wrap_coord(route_x[3] + pa_rand_range(&seed, -28, 28), PA_WORLD_COLS);
+    branch_y = pa_wrap_coord(route_y[3] + pa_rand_range(&seed, -24, 24), PA_WORLD_ROWS);
+    plans[plan_count++] = (PaRegionPlan){PA_OP_CHOOSE, branch_x, branch_y, 14, 10, 4};
+
+    branch_x = pa_wrap_coord(route_x[4] + pa_rand_range(&seed, -24, 24), PA_WORLD_COLS);
+    branch_y = pa_wrap_coord(route_y[4] + pa_rand_range(&seed, -24, 24), PA_WORLD_ROWS);
+    plans[plan_count++] = (PaRegionPlan){late_b, branch_x, branch_y, 12, 10, 4};
+
+    for (i = 0; i < plan_count; ++i) {
+        pa_add_region_seeds(centers, &center_count, &plans[i], &seed);
+    }
+
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        for (x = 0; x < PA_WORLD_COLS; ++x) {
+            int best_score = 1 << 30;
+            PaOperatorType best_op = PA_OP_FLOW;
+
+            app->tiles[y][x] = PA_TILE_FLOOR;
+            for (i = 0; i < center_count; ++i) {
+                int dx = pa_torus_delta(centers[i].x, x, PA_WORLD_COLS);
+                int dy = pa_torus_delta(centers[i].y, y, PA_WORLD_ROWS);
+                int score = (dx * dx * 2) + (dy * dy * 3) + (int)pa_cell_noise(x, y, i);
+
+                if (centers[i].op == PA_OP_DISSOLVE) {
+                    score += (y > PA_WORLD_ROWS / 2 ? 24 : 0);
+                }
+                if (centers[i].op == PA_OP_CHOOSE) {
+                    score += (y < PA_WORLD_ROWS / 2 ? 20 : 0);
+                }
+                if (score < best_score) {
+                    best_score = score;
+                    best_op = centers[i].op;
+                }
+            }
+
+            app->operators[y][x] = (uint8_t)best_op;
+            app->zones[y][x] = (uint8_t)pa_operator_zone(best_op);
+            app->local_entropy_rate[y][x] = k_operator_rates[best_op];
+        }
+    }
+
+    for (i = 0; i < 6; ++i) {
+        int cx = route_x[i];
+        int cy = route_y[i];
+        int rx;
+        int ry;
+
+        for (ry = -3; ry <= 3; ++ry) {
+            for (rx = -4; rx <= 4; ++rx) {
+                int wx = pa_wrap_coord(cx + rx, PA_WORLD_COLS);
+                int wy = pa_wrap_coord(cy + ry, PA_WORLD_ROWS);
+
+                if ((rx * rx) + (ry * ry) <= 16) {
+                    app->operators[wy][wx] = (uint8_t)plans[i].op;
+                }
+            }
+        }
+    }
+
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        for (x = 0; x < PA_WORLD_COLS; ++x) {
+            PaOperatorType op = (PaOperatorType)app->operators[y][x];
+            int right_x = pa_wrap_coord(x + 1, PA_WORLD_COLS);
+            int down_y = pa_wrap_coord(y + 1, PA_WORLD_ROWS);
+            PaOperatorType right = (PaOperatorType)app->operators[y][right_x];
+            PaOperatorType down = (PaOperatorType)app->operators[down_y][x];
+
+            if (!pa_operator_allowed(op, right)) {
+                app->operators[y][right_x] = (uint8_t)pa_find_bridge_operator(op, right);
+            }
+            if (!pa_operator_allowed(op, down)) {
+                app->operators[down_y][x] = (uint8_t)pa_find_bridge_operator(op, down);
+            }
+        }
+    }
+
+    for (i = 0; i < 2; ++i) {
+        for (y = 0; y < PA_WORLD_ROWS; ++y) {
+            for (x = 0; x < PA_WORLD_COLS; ++x) {
+                PaOperatorType op = (PaOperatorType)app->operators[y][x];
+                unsigned int counts[PA_OP_COUNT] = {0};
+                PaOperatorType best_op = op;
+                unsigned int best_count = 0;
+                int nx;
+                int ny;
+
+                for (ny = -1; ny <= 1; ++ny) {
+                    for (nx = -1; nx <= 1; ++nx) {
+                        int sample_y = pa_wrap_coord(y + ny, PA_WORLD_ROWS);
+                        int sample_x = pa_wrap_coord(x + nx, PA_WORLD_COLS);
+                        PaOperatorType near = (PaOperatorType)app->operators[sample_y][sample_x];
+
+                        counts[near] += 1u;
+                    }
+                }
+                for (nx = 0; nx < PA_OP_COUNT; ++nx) {
+                    if (counts[nx] > best_count && pa_operator_allowed(op, (PaOperatorType)nx)) {
+                        best_count = counts[nx];
+                        best_op = (PaOperatorType)nx;
+                    }
+                }
+                if (best_count >= 5u) {
+                    app->operators[y][x] = (uint8_t)best_op;
+                }
+            }
+        }
+    }
+
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        for (x = 0; x < PA_WORLD_COLS; ++x) {
+            PaOperatorType op = (PaOperatorType)app->operators[y][x];
+            app->zones[y][x] = (uint8_t)pa_operator_zone(op);
+            app->local_entropy_rate[y][x] = k_operator_rates[op];
+        }
+    }
+
+    app->packet_x = route_x[0];
+    app->packet_y = route_y[0];
+    app->transition_x = route_x[5];
+    app->transition_y = route_y[5];
+    app->operators[app->packet_y][app->packet_x] = PA_OP_FLOW;
+    app->operators[app->transition_y][app->transition_x] = PA_OP_MANIFEST;
+    app->zones[app->packet_y][app->packet_x] = (uint8_t)pa_operator_zone(PA_OP_FLOW);
+    app->zones[app->transition_y][app->transition_x] = (uint8_t)pa_operator_zone(PA_OP_MANIFEST);
+    app->local_entropy_rate[app->packet_y][app->packet_x] = k_operator_rates[PA_OP_FLOW];
+    app->local_entropy_rate[app->transition_y][app->transition_x] = k_operator_rates[PA_OP_MANIFEST];
+    app->manifested[app->packet_y][app->packet_x] = true;
+    app->calm[app->packet_y][app->packet_x] = true;
+    app->manifested[app->transition_y][app->transition_x] = true;
+    app->entropy = 0u;
+    app->move_cooldown = 0u;
+    app->param_cooldown = 0u;
+    app->sweep_frame = 0u;
+    app->sw_cycle_count = 0u;
+    app->sweep_speed = 1u;
+    app->sweep_paused = false;
+    app->transition_reached = false;
+    pa_reset_regen_state();
+    pa_consolidate_operator_zones(app);
+    pa_capture_base_operator_area(app);
+    app->debug_world_hash = pa_debug_world_hash(app);
+    app->topology_revision += 1u;
+}
+
+void pa_world_advance_layer_impl(PaApp *app) {
+    bool prev_calm[PA_WORLD_ROWS][PA_WORLD_COLS];
+    bool prev_manifested[PA_WORLD_ROWS][PA_WORLD_COLS];
+
+    memcpy(prev_calm, app->calm, sizeof(prev_calm));
+    memcpy(prev_manifested, app->manifested, sizeof(prev_manifested));
+    app->layer_index += 1u;
+    app->world_seed = (app->world_seed * 1664525u) + 1013904223u + (app->layer_index * 97u);
+    pa_world_generate_impl(app);
+
+    {
+        int x;
+        int y;
+
+        for (y = 0; y < PA_WORLD_ROWS; ++y) {
+            for (x = 0; x < PA_WORLD_COLS; ++x) {
+                if (prev_calm[y][x]) {
+                    app->calm[y][x] = true;
+                    app->manifested[y][x] = true;
+                } else if (prev_manifested[y][x]) {
+                    app->manifested[y][x] = true;
+                }
+            }
+        }
+
+        pa_reset_regen_state();
+    }
+}
+
+```
+
+================================================================
+FILE: packetcli2machine/src/manifestation_runtime/manifestation_runtime.c
+================================================================
+
+```c
+#include <stdint.h>
+
+#include "packet_adventure/runtime_internal.h"
+
+static const uint8_t k_operator_rates[PA_OP_COUNT] = {
+    2, 1, 4, 3, 3, 0, 2, 1, 1, 5
+};
+
+static void pa_manifest_local_bounds(const PaApp *app, int *min_x, int *max_x, int *min_y, int *max_y) {
+    int span = app->packet_field_radius + 16;
+
+    *min_x = pa_clamp(app->packet_x - span, 0, PA_WORLD_COLS - 1);
+    *max_x = pa_clamp(app->packet_x + span, 0, PA_WORLD_COLS - 1);
+    *min_y = pa_clamp(app->packet_y - span, 0, PA_WORLD_ROWS - 1);
+    *max_y = pa_clamp(app->packet_y + span, 0, PA_WORLD_ROWS - 1);
+}
+
+int pa_manifest_mf_strength_impl(const PaApp *app, int x, int y) {
+    int dx = pa_torus_delta(app->packet_x, x, PA_WORLD_COLS);
+    int dy = pa_torus_delta(app->packet_y, y, PA_WORLD_ROWS);
+    int metric = pa_pf_metric(dx, dy);
+    int core_threshold = (app->packet_field_radius * 2) + 6;
+    int full_threshold = core_threshold + 8;
+    int fringe_threshold = full_threshold + 10;
+
+    if (metric <= core_threshold) {
+        return 3;
+    }
+    if (metric <= full_threshold) {
+        return 2;
+    }
+    if (metric <= fringe_threshold) {
+        return 1;
+    }
+    return 0;
+}
+
+bool pa_manifest_cell_is_turbulence_impl(const PaApp *app, int x, int y) {
+    return !app->calm[y][x] &&
+           app->manifested[y][x] &&
+           app->local_density[y][x] >= PA_TURBULENCE_THRESHOLD;
+}
+
+void pa_manifest_refresh_density_impl(PaApp *app) {
+    int x;
+    int y;
+
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        for (x = 0; x < PA_WORLD_COLS; ++x) {
+            unsigned int counts[PA_OP_COUNT] = {0};
+            PaOperatorType op;
+            unsigned int same_count = 0;
+            unsigned int distinct = 0;
+            unsigned int calm_touch = 0;
+            unsigned int incompatible = 0;
+            unsigned int density = 0;
+            int manifest_strength = pa_manifest_mf_strength_impl(app, x, y);
+            int nx;
+            int ny;
+
+            if (app->calm[y][x] || manifest_strength == 0) {
+                app->local_density[y][x] = 0u;
+                continue;
+            }
+            if (!app->manifested[y][x]) {
+                pa_world_manifest_cell_impl(app, x, y);
+            }
+            op = (PaOperatorType)app->operators[y][x];
+
+            for (ny = -2; ny <= 2; ++ny) {
+                for (nx = -2; nx <= 2; ++nx) {
+                    int sample_y = pa_wrap_coord(y + ny, PA_WORLD_ROWS);
+                    int sample_x = pa_wrap_coord(x + nx, PA_WORLD_COLS);
+                    PaOperatorType near = (PaOperatorType)app->operators[sample_y][sample_x];
+
+                    counts[near] += 1u;
+                    if (near == op) {
+                        same_count += 1u;
+                    }
+                    if (!(nx == 0 && ny == 0) && app->calm[sample_y][sample_x]) {
+                        calm_touch += 1u;
+                    }
+                    if (!pa_operator_allowed(op, near) && near != op) {
+                        incompatible += 1u;
+                    }
+                }
+            }
+
+            for (nx = 0; nx < PA_OP_COUNT; ++nx) {
+                if (counts[nx] > 0u) {
+                    distinct += 1u;
+                }
+            }
+
+            if (distinct > 1u) {
+                density += (distinct - 1u) * 20u;
+            }
+            if (same_count < 16u) {
+                density += (16u - same_count) * 4u;
+            }
+            density += incompatible * 6u;
+            density += calm_touch * 3u;
+            density = (density * (unsigned int)manifest_strength) / 3u;
+
+            if (density > 255u) {
+                density = 255u;
+            }
+            app->local_density[y][x] = (uint8_t)density;
+        }
+    }
+}
+
+void pa_manifest_refresh_density_local_impl(PaApp *app) {
+    int min_x;
+    int max_x;
+    int min_y;
+    int max_y;
+    int x;
+    int y;
+
+    pa_manifest_local_bounds(app, &min_x, &max_x, &min_y, &max_y);
+
+    for (y = min_y; y <= max_y; ++y) {
+        for (x = min_x; x <= max_x; ++x) {
+            unsigned int counts[PA_OP_COUNT] = {0};
+            PaOperatorType op;
+            unsigned int same_count = 0;
+            unsigned int distinct = 0;
+            unsigned int calm_touch = 0;
+            unsigned int incompatible = 0;
+            unsigned int density = 0;
+            int manifest_strength = pa_manifest_mf_strength_impl(app, x, y);
+            int nx;
+            int ny;
+
+            if (app->calm[y][x] || manifest_strength == 0) {
+                app->local_density[y][x] = 0u;
+                continue;
+            }
+            if (!app->manifested[y][x]) {
+                pa_world_manifest_cell_impl(app, x, y);
+            }
+            op = (PaOperatorType)app->operators[y][x];
+
+            for (ny = -2; ny <= 2; ++ny) {
+                for (nx = -2; nx <= 2; ++nx) {
+                    int sample_y = pa_wrap_coord(y + ny, PA_WORLD_ROWS);
+                    int sample_x = pa_wrap_coord(x + nx, PA_WORLD_COLS);
+                    PaOperatorType near = (PaOperatorType)app->operators[sample_y][sample_x];
+
+                    counts[near] += 1u;
+                    if (near == op) {
+                        same_count += 1u;
+                    }
+                    if (!(nx == 0 && ny == 0) && app->calm[sample_y][sample_x]) {
+                        calm_touch += 1u;
+                    }
+                    if (!pa_operator_allowed(op, near) && near != op) {
+                        incompatible += 1u;
+                    }
+                }
+            }
+
+            for (nx = 0; nx < PA_OP_COUNT; ++nx) {
+                if (counts[nx] > 0u) {
+                    distinct += 1u;
+                }
+            }
+
+            if (distinct > 1u) {
+                density += (distinct - 1u) * 20u;
+            }
+            if (same_count < 16u) {
+                density += (16u - same_count) * 4u;
+            }
+            density += incompatible * 6u;
+            density += calm_touch * 3u;
+            density = (density * (unsigned int)manifest_strength) / 3u;
+
+            if (density > 255u) {
+                density = 255u;
+            }
+            app->local_density[y][x] = (uint8_t)density;
+        }
+    }
+}
+
+void pa_manifest_refresh_world_fields_impl(PaApp *app) {
+    int x;
+    int y;
+
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        for (x = 0; x < PA_WORLD_COLS; ++x) {
+            PaOperatorType op;
+            int manifest_strength = pa_manifest_mf_strength_impl(app, x, y);
+
+            if (!app->calm[y][x] &&
+                manifest_strength == 0 &&
+                !(x == app->packet_x && y == app->packet_y) &&
+                !(x == app->transition_x && y == app->transition_y)) {
+                continue;
+            }
+            if (!app->calm[y][x] && manifest_strength > 0 && !app->manifested[y][x]) {
+                pa_world_manifest_cell_impl(app, x, y);
+            }
+
+            op = (PaOperatorType)app->operators[y][x];
+            app->zones[y][x] = (uint8_t)pa_operator_zone(op);
+            app->local_entropy_rate[y][x] = k_operator_rates[op];
+        }
+    }
+
+    pa_manifest_refresh_density_impl(app);
+}
+
+void pa_manifest_refresh_world_fields_local_impl(PaApp *app) {
+    int min_x;
+    int max_x;
+    int min_y;
+    int max_y;
+    int x;
+    int y;
+
+    pa_manifest_local_bounds(app, &min_x, &max_x, &min_y, &max_y);
+
+    for (y = min_y; y <= max_y; ++y) {
+        for (x = min_x; x <= max_x; ++x) {
+            PaOperatorType op;
+            int manifest_strength = pa_manifest_mf_strength_impl(app, x, y);
+
+            if (!app->calm[y][x] &&
+                manifest_strength == 0 &&
+                !(x == app->packet_x && y == app->packet_y) &&
+                !(x == app->transition_x && y == app->transition_y)) {
+                continue;
+            }
+            if (!app->calm[y][x] && manifest_strength > 0 && !app->manifested[y][x]) {
+                pa_world_manifest_cell_impl(app, x, y);
+            }
+
+            op = (PaOperatorType)app->operators[y][x];
+            app->zones[y][x] = (uint8_t)pa_operator_zone(op);
+            app->local_entropy_rate[y][x] = k_operator_rates[op];
+        }
+    }
+
+    pa_manifest_refresh_density_local_impl(app);
+}
+
+```
+
+================================================================
+FILE: packetcli2machine/src/packet_runtime/packet_runtime.c
+================================================================
+
+```c
+#include <stdint.h>
+
+#include "packet_adventure/runtime_internal.h"
+
+bool pa_packet_pf_contains_cell_impl(const PaApp *app, int cell_x, int cell_y) {
+    int dx = pa_torus_delta(app->packet_x, cell_x, PA_WORLD_COLS);
+    int dy = pa_torus_delta(app->packet_y, cell_y, PA_WORLD_ROWS);
+    int threshold = app->packet_field_radius * 2;
+
+    return pa_pf_metric(dx, dy) <= threshold;
+}
+
+void pa_packet_try_move_impl(PaApp *app, int dx, int dy) {
+    int next_x = pa_wrap_coord(app->packet_x + dx, PA_WORLD_COLS);
+    int next_y = pa_wrap_coord(app->packet_y + dy, PA_WORLD_ROWS);
+    uint32_t pf_cost_scale;
+
+    if (app->tiles[next_y][next_x] == PA_TILE_WALL) {
+        return;
+    }
+
+    app->packet_x = next_x;
+    app->packet_y = next_y;
+    pf_cost_scale = 4u + (uint32_t)app->packet_field_radius;
+    app->entropy += (app->local_entropy_rate[next_y][next_x] * pf_cost_scale) / 4u;
+    app->manifested[next_y][next_x] = true;
+    if (app->packet_x == app->transition_x && app->packet_y == app->transition_y) {
+        app->transition_reached = true;
+    }
+}
+
+void pa_packet_adjust_field_impl(PaApp *app, int delta) {
+    int next = app->packet_field_radius + delta;
+
+    if (next < 1) {
+        next = 1;
+    }
+    if (next > 8) {
+        next = 8;
+    }
+    app->packet_field_radius = next;
+}
+
+void pa_packet_update_field_impl(PaApp *app) {
+    uint32_t pw_phase = app->frame % PA_PW_PERIOD;
+    int pw_front = (int)((pw_phase * (uint32_t)(app->packet_field_radius * 2 + 1)) / PA_PW_PERIOD);
+    int y;
+    int x;
+
+    for (y = -app->packet_field_radius - 1; y <= app->packet_field_radius + 1; ++y) {
+        for (x = -app->packet_field_radius - 1; x <= app->packet_field_radius + 1; ++x) {
+            int world_y = pa_wrap_coord(app->packet_y + y, PA_WORLD_ROWS);
+            int world_x = pa_wrap_coord(app->packet_x + x, PA_WORLD_COLS);
+            int metric;
+            int ring;
+
+            if (!pa_packet_pf_contains_cell_impl(app, world_x, world_y)) {
+                continue;
+            }
+
+            app->manifested[world_y][world_x] = true;
+            metric = pa_pf_metric(
+                pa_torus_delta(app->packet_x, world_x, PA_WORLD_COLS),
+                pa_torus_delta(app->packet_y, world_y, PA_WORLD_ROWS)
+            );
+            ring = metric / 2;
+            if (ring <= pw_front) {
+                app->calm[world_y][world_x] = true;
+            }
+        }
+    }
+}
+
+```
+
+================================================================
+FILE: packetcli2machine/src/ui_runtime/ui_render.c
+================================================================
+
+```c
+#include "packet_adventure/ui_render.h"
+
+#include <limits.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "packet_adventure/font_renderer.h"
+#include "packet_adventure/render_primitives.h"
+#include "packet_adventure/runtime_internal.h"
+
+#define PA_PANEL_BG 0
+#define PA_PANEL_EDGE 1
+#define PA_PACKET_CORE 2
+#define PA_PACKET_GLOW 3
+#define PA_NODE_CORE 4
+#define PA_NODE_GLOW 5
+#define PA_STATUS_TEXT 6
+#define PA_STATUS_ACCENT 7
+#define PA_LOG_TEXT 8
+#define PA_SWEEP_COLOR 9
+#define PA_VOID_COLOR 10
+
+static uint32_t g_ui_cache_revision_8888 = UINT32_MAX;
+static uint32_t g_ui_cache_revision_565 = UINT32_MAX;
+static uint32_t g_ui_pixels_8888[PA_SCREEN_WIDTH * PA_SCREEN_HEIGHT];
+static uint16_t g_ui_pixels_565[PA_SCREEN_WIDTH * PA_SCREEN_HEIGHT];
+static uint32_t g_minimap_substrate[PA_MINIMAP_LOGICAL_W * PA_MINIMAP_LOGICAL_H];
+static uint16_t g_minimap_world_x[PA_MINIMAP_LOGICAL_W * PA_MINIMAP_LOGICAL_H];
+static uint16_t g_minimap_world_y[PA_MINIMAP_LOGICAL_W * PA_MINIMAP_LOGICAL_H];
+static uint32_t g_minimap_substrate_revision = UINT32_MAX;
+static int g_minimap_center_x = INT_MIN;
+static int g_minimap_center_y = INT_MIN;
+
+static const PaOperatorType k_operator_display_order[PA_OP_COUNT] = {
+    PA_OP_FLOW, PA_OP_CONNECT, PA_OP_DISSOLVE, PA_OP_ENCODE, PA_OP_CHOOSE,
+    PA_OP_OBSERVE, PA_OP_CYCLE, PA_OP_LOGIC, PA_OP_RUNTIME, PA_OP_MANIFEST
+};
+
+static uint32_t pa_color_theme(int id) {
+    switch (id) {
+        case PA_PANEL_BG: return pa_rgb(4, 8, 11);
+        case PA_PANEL_EDGE: return pa_rgb(18, 42, 48);
+        case PA_PACKET_CORE: return pa_rgb(255, 255, 255);
+        case PA_PACKET_GLOW: return pa_rgb(118, 230, 255);
+        case PA_NODE_CORE: return pa_rgb(255, 170, 58);
+        case PA_NODE_GLOW: return pa_rgb(255, 238, 176);
+        case PA_STATUS_TEXT: return pa_rgb(215, 228, 230);
+        case PA_STATUS_ACCENT: return pa_rgb(255, 118, 62);
+        case PA_LOG_TEXT: return pa_rgb(144, 228, 255);
+        case PA_SWEEP_COLOR: return pa_rgb(255, 255, 255);
+        case PA_VOID_COLOR: return pa_rgb(0, 0, 0);
+        default: return pa_rgb(255, 0, 255);
+    }
+}
+
+static uint32_t pa_operator_rgb(unsigned int r, unsigned int g, unsigned int b) {
+    return pa_rgb(b, g, r);
+}
+
+static uint32_t pa_operator_color(PaOperatorType op) {
+    switch (op) {
+        case PA_OP_FLOW: return pa_operator_rgb(46, 206, 255);
+        case PA_OP_CONNECT: return pa_operator_rgb(255, 220, 60);
+        case PA_OP_DISSOLVE: return pa_operator_rgb(190, 80, 255);
+        case PA_OP_ENCODE: return pa_operator_rgb(80, 160, 255);
+        case PA_OP_CHOOSE: return pa_operator_rgb(255, 58, 58);
+        case PA_OP_OBSERVE: return pa_operator_rgb(240, 245, 255);
+        case PA_OP_CYCLE: return pa_operator_rgb(255, 160, 40);
+        case PA_OP_LOGIC: return pa_operator_rgb(80, 255, 120);
+        case PA_OP_RUNTIME: return pa_operator_rgb(90, 100, 180);
+        case PA_OP_MANIFEST: return pa_operator_rgb(255, 240, 200);
+        default: return pa_operator_rgb(255, 255, 255);
+    }
+}
+
+static uint32_t pa_dim(uint32_t color, unsigned int numerator, unsigned int denominator) {
+    unsigned int r = color & 0xFFu;
+    unsigned int g = (color >> 8) & 0xFFu;
+    unsigned int b = (color >> 16) & 0xFFu;
+
+    if (denominator == 0u) {
+        denominator = 1u;
+    }
+
+    return pa_rgb(
+        (r * numerator) / denominator,
+        (g * numerator) / denominator,
+        (b * numerator) / denominator
+    );
+}
+
+static uint32_t pa_add_rgb(uint32_t color, int dr, int dg, int db) {
+    int r = (int)(color & 0xFFu) + dr;
+    int g = (int)((color >> 8) & 0xFFu) + dg;
+    int b = (int)((color >> 16) & 0xFFu) + db;
+
+    if (r < 0) {
+        r = 0;
+    } else if (r > 255) {
+        r = 255;
+    }
+    if (g < 0) {
+        g = 0;
+    } else if (g > 255) {
+        g = 255;
+    }
+    if (b < 0) {
+        b = 0;
+    } else if (b > 255) {
+        b = 255;
+    }
+    return pa_rgb((unsigned int)r, (unsigned int)g, (unsigned int)b);
+}
+
+static PaRect pa_observe_rect(void) {
+    return (PaRect){88, 20, 240, 240};
+}
+
+static PaRect pa_status_rect(void) {
+    return (PaRect){356, 20, 110, 240};
+}
+
+static PaRect pa_log_rect(void) {
+    return (PaRect){14, 6, 452, 10};
+}
+
+static PaRect pa_map_rect(void) {
+    return (PaRect){
+        (PA_SCREEN_WIDTH - PA_WORLD_COLS) / 2,
+        (PA_SCREEN_HEIGHT - PA_WORLD_ROWS) / 2,
+        PA_WORLD_COLS,
+        PA_WORLD_ROWS
+    };
+}
+
+static int pa_camera_x(const PaApp *app) {
+    return pa_clamp(app->packet_x - (PA_VIEW_COLS / 2), 0, PA_WORLD_COLS - PA_VIEW_COLS);
+}
+
+static int pa_camera_y(const PaApp *app) {
+    return pa_clamp(app->packet_y - (PA_VIEW_ROWS / 2), 0, PA_WORLD_ROWS - PA_VIEW_ROWS);
+}
+
+static void pa_build_ui_cache(PaSurface *surface) {
+    PaRect observe = pa_observe_rect();
+    PaRect status = pa_status_rect();
+    PaRect log = pa_log_rect();
+
+    pa_clear(surface, pa_color_theme(PA_VOID_COLOR));
+    pa_fill_rect(surface, status, pa_color_theme(PA_PANEL_BG));
+    pa_draw_line(surface, status.x - 10, status.y, status.x - 10, status.y + status.h, pa_dim(pa_color_theme(PA_PANEL_EDGE), 7u, 10u));
+    pa_draw_line(surface, observe.x - 14, observe.y, observe.x - 14, observe.y + observe.h, pa_dim(pa_color_theme(PA_PANEL_EDGE), 3u, 10u));
+    pa_draw_line(surface, log.x, log.y + log.h + 4, log.x + log.w, log.y + log.h + 4, pa_dim(pa_color_theme(PA_PANEL_EDGE), 4u, 10u));
+}
+
+void pa_ui_render_copy_cache(PaSurface *surface, const PaApp *app) {
+    PaSurface cache_surface;
+
+    if (surface->format == PA_PIXEL_FORMAT_8888) {
+        if (g_ui_cache_revision_8888 != app->topology_revision) {
+            cache_surface.pixels = g_ui_pixels_8888;
+            cache_surface.width = PA_SCREEN_WIDTH;
+            cache_surface.height = PA_SCREEN_HEIGHT;
+            cache_surface.stride = PA_SCREEN_WIDTH;
+            cache_surface.format = PA_PIXEL_FORMAT_8888;
+            pa_build_ui_cache(&cache_surface);
+            g_ui_cache_revision_8888 = app->topology_revision;
+        }
+        cache_surface.pixels = g_ui_pixels_8888;
+        cache_surface.width = PA_SCREEN_WIDTH;
+        cache_surface.height = PA_SCREEN_HEIGHT;
+        cache_surface.stride = PA_SCREEN_WIDTH;
+        cache_surface.format = PA_PIXEL_FORMAT_8888;
+        pa_copy_surface(surface, &cache_surface);
+    } else {
+        if (g_ui_cache_revision_565 != app->topology_revision) {
+            cache_surface.pixels = g_ui_pixels_565;
+            cache_surface.width = PA_SCREEN_WIDTH;
+            cache_surface.height = PA_SCREEN_HEIGHT;
+            cache_surface.stride = PA_SCREEN_WIDTH;
+            cache_surface.format = PA_PIXEL_FORMAT_565;
+            pa_build_ui_cache(&cache_surface);
+            g_ui_cache_revision_565 = app->topology_revision;
+        }
+        cache_surface.pixels = g_ui_pixels_565;
+        cache_surface.width = PA_SCREEN_WIDTH;
+        cache_surface.height = PA_SCREEN_HEIGHT;
+        cache_surface.stride = PA_SCREEN_WIDTH;
+        cache_surface.format = PA_PIXEL_FORMAT_565;
+        pa_copy_surface(surface, &cache_surface);
+    }
+}
+
+static void pa_draw_trigram(PaSurface *surface, int x, int y, int top, int mid, int bot, uint32_t color) {
+    int row_y[3] = {y, y + 4, y + 8};
+    int bits[3] = {top, mid, bot};
+    int i;
+
+    for (i = 0; i < 3; ++i) {
+        if (bits[i] != 0) {
+            pa_fill_rect(surface, (PaRect){x, row_y[i], 10, 1}, color);
+        } else {
+            pa_fill_rect(surface, (PaRect){x, row_y[i], 4, 1}, color);
+            pa_fill_rect(surface, (PaRect){x + 6, row_y[i], 4, 1}, color);
+        }
+    }
+}
+
+static void pa_draw_operator_glyph(PaSurface *surface, int x, int y, PaOperatorType op, uint32_t color) {
+    switch (op) {
+        case PA_OP_FLOW:
+            pa_draw_line(surface, x + 0, y + 8, x + 2, y + 6, color);
+            pa_draw_line(surface, x + 2, y + 6, x + 4, y + 8, color);
+            pa_draw_line(surface, x + 4, y + 8, x + 6, y + 6, color);
+            pa_draw_line(surface, x + 6, y + 6, x + 8, y + 8, color);
+            pa_draw_line(surface, x + 8, y + 8, x + 10, y + 6, color);
+            break;
+        case PA_OP_CONNECT:
+            pa_draw_trigram(surface, x, y + 1, 1, 1, 1, color);
+            break;
+        case PA_OP_DISSOLVE:
+            pa_draw_trigram(surface, x, y + 1, 0, 0, 0, color);
+            break;
+        case PA_OP_ENCODE:
+            pa_draw_trigram(surface, x, y + 1, 0, 1, 0, color);
+            break;
+        case PA_OP_CHOOSE:
+            pa_draw_trigram(surface, x, y + 1, 1, 0, 0, color);
+            break;
+        case PA_OP_OBSERVE:
+            pa_draw_trigram(surface, x, y + 1, 0, 1, 1, color);
+            break;
+        case PA_OP_CYCLE:
+            pa_draw_trigram(surface, x, y + 1, 1, 0, 1, color);
+            break;
+        case PA_OP_LOGIC:
+            pa_draw_trigram(surface, x, y + 1, 0, 0, 1, color);
+            break;
+        case PA_OP_RUNTIME:
+            pa_draw_trigram(surface, x, y + 1, 1, 1, 0, color);
+            break;
+        case PA_OP_MANIFEST:
+            pa_draw_line(surface, x + 5, y + 1, x + 0, y + 10, color);
+            pa_draw_line(surface, x + 5, y + 1, x + 10, y + 10, color);
+            pa_draw_line(surface, x + 0, y + 10, x + 10, y + 10, color);
+            break;
+        default:
+            pa_fill_rect(surface, (PaRect){x + 4, y + 4, 2, 2}, color);
+            break;
+    }
+}
+
+static bool pa_pf_contains_cell_ui(const PaApp *app, int cell_x, int cell_y) {
+    int dx = pa_torus_delta(app->packet_x, cell_x, PA_WORLD_COLS);
+    int dy = pa_torus_delta(app->packet_y, cell_y, PA_WORLD_ROWS);
+
+    return pa_pf_metric(dx, dy) <= (app->packet_field_radius * 2);
+}
+
+static void pa_collect_active_operators(const PaApp *app, bool active[PA_OP_COUNT]) {
+    int dx;
+    int dy;
+
+    memset(active, 0, sizeof(bool) * PA_OP_COUNT);
+
+    for (dy = -app->packet_field_radius - 1; dy <= app->packet_field_radius + 1; ++dy) {
+        for (dx = -app->packet_field_radius - 1; dx <= app->packet_field_radius + 1; ++dx) {
+            int x = pa_wrap_coord(app->packet_x + dx, PA_WORLD_COLS);
+            int y = pa_wrap_coord(app->packet_y + dy, PA_WORLD_ROWS);
+            PaOperatorType op;
+
+            if (!pa_pf_contains_cell_ui(app, x, y)) {
+                continue;
+            }
+            op = (PaOperatorType)app->operators[y][x];
+            active[op] = true;
+        }
+    }
+}
+
+static void pa_build_status_minimap_substrate(const PaApp *app) {
+    int mx;
+    int my;
+
+    for (my = 0; my < PA_MINIMAP_LOGICAL_H; ++my) {
+        int sample_y = ((my * PA_MINIMAP_SPAN_Y) / PA_MINIMAP_LOGICAL_H) - (PA_MINIMAP_SPAN_Y / 2);
+        int world_y = pa_wrap_coord(app->packet_y + sample_y, PA_WORLD_ROWS);
+
+        for (mx = 0; mx < PA_MINIMAP_LOGICAL_W; ++mx) {
+            int sample_x = ((mx * PA_MINIMAP_SPAN_X) / PA_MINIMAP_LOGICAL_W) - (PA_MINIMAP_SPAN_X / 2);
+            int world_x = pa_wrap_coord(app->packet_x + sample_x, PA_WORLD_COLS);
+            int strength = pa_manifest_mf_strength_impl(app, world_x, world_y);
+            uint32_t color = pa_color_theme(PA_VOID_COLOR);
+            int idx = my * PA_MINIMAP_LOGICAL_W + mx;
+
+            if (app->calm[world_y][world_x] || strength > 0) {
+                color = pa_operator_color((PaOperatorType)app->operators[world_y][world_x]);
+            }
+            g_minimap_world_x[idx] = (uint16_t)world_x;
+            g_minimap_world_y[idx] = (uint16_t)world_y;
+            g_minimap_substrate[idx] = (color == pa_color_theme(PA_VOID_COLOR))
+                ? color
+                : pa_dim(color, 3u, 10u);
+        }
+    }
+
+    g_minimap_substrate_revision = app->topology_revision;
+    g_minimap_center_x = app->packet_x;
+    g_minimap_center_y = app->packet_y;
+}
+
+static void pa_draw_status_minimap(PaSurface *surface, const PaApp *app, int x, int y) {
+    PaRect map = {x, y, PA_MINIMAP_LOGICAL_W * PA_MINIMAP_SCALE, PA_MINIMAP_LOGICAL_H * PA_MINIMAP_SCALE};
+    int sweep_world_x = (int)(((app->sweep_frame % PA_SWEEP_PERIOD) * (uint32_t)(PA_WORLD_COLS - 1)) / PA_SWEEP_PERIOD);
+    int mx;
+    int my;
+
+    if (g_minimap_substrate_revision != app->topology_revision ||
+        g_minimap_center_x != app->packet_x ||
+        g_minimap_center_y != app->packet_y) {
+        pa_build_status_minimap_substrate(app);
+    }
+
+    pa_fill_rect(surface, map, pa_color_theme(PA_VOID_COLOR));
+    for (my = 0; my < PA_MINIMAP_LOGICAL_H; ++my) {
+        for (mx = 0; mx < PA_MINIMAP_LOGICAL_W; ++mx) {
+            int idx = my * PA_MINIMAP_LOGICAL_W + mx;
+            int world_x = (int)g_minimap_world_x[idx];
+            int world_y = (int)g_minimap_world_y[idx];
+            uint32_t color = g_minimap_substrate[idx];
+            int wave_dx = pa_torus_delta(sweep_world_x, world_x, PA_WORLD_COLS);
+            int px = map.x + (mx * PA_MINIMAP_SCALE);
+            int py = map.y + (my * PA_MINIMAP_SCALE);
+            bool calm = app->calm[world_y][world_x];
+            bool manifested = app->manifested[world_y][world_x];
+            int strength = pa_manifest_mf_strength_impl(app, world_x, world_y);
+            unsigned int density = app->local_density[world_y][world_x];
+            uint32_t signal = pa_color_theme(PA_PANEL_EDGE);
+
+            if (strength == 0 && !calm) {
+                continue;
+            }
+
+            if (wave_dx >= 0 && wave_dx < 2) {
+                signal = pa_add_rgb(color, 26, 26, 26);
+                pa_fill_rect(surface, (PaRect){px + 1, py + 1, 2, 2}, signal);
+            } else if (wave_dx >= 0 && wave_dx < 8) {
+                signal = pa_dim(color, 7u, 10u);
+                pa_fill_rect(surface, (PaRect){px + 1, py + 1, 2, 2}, signal);
+            } else if (wave_dx > -24 && wave_dx < 0) {
+                signal = pa_dim(color, 4u, 10u);
+                pa_fill_rect(surface, (PaRect){px + 1, py + 1, 1, 1}, signal);
+            }
+
+            if (calm) {
+                pa_fill_rect(surface, (PaRect){px + 2, py + 2, 1, 1}, pa_dim(pa_color_theme(PA_STATUS_TEXT), 3u, 10u));
+            } else if (manifested) {
+                pa_fill_rect(surface, (PaRect){px + 2, py + 2, 1, 1}, pa_dim(pa_color_theme(PA_PANEL_EDGE), 5u, 10u));
+            } else if (density >= 96u) {
+                pa_fill_rect(surface, (PaRect){px + 2, py + 2, 1, 1}, pa_dim(color, 6u, 10u));
+            }
+        }
+    }
+
+    pa_draw_rect(surface, map, pa_color_theme(PA_PANEL_EDGE));
+
+    {
+        int packet_mx = map.x + (map.w / 2);
+        int packet_my = map.y + (map.h / 2);
+        int target_dx = pa_torus_delta(app->packet_x, app->transition_x, PA_WORLD_COLS);
+        int target_dy = pa_torus_delta(app->packet_y, app->transition_y, PA_WORLD_ROWS);
+
+        if (target_dx >= -(PA_MINIMAP_SPAN_X / 2) && target_dx < (PA_MINIMAP_SPAN_X / 2) &&
+            target_dy >= -(PA_MINIMAP_SPAN_Y / 2) && target_dy < (PA_MINIMAP_SPAN_Y / 2)) {
+            int target_mx = map.x + (((target_dx + (PA_MINIMAP_SPAN_X / 2)) * map.w) / PA_MINIMAP_SPAN_X);
+            int target_my = map.y + (((target_dy + (PA_MINIMAP_SPAN_Y / 2)) * map.h) / PA_MINIMAP_SPAN_Y);
+
+            pa_fill_rect(surface, (PaRect){target_mx - 1, target_my - 1, 3, 3}, pa_color_theme(PA_NODE_GLOW));
+            pa_fill_rect(surface, (PaRect){target_mx, target_my, 1, 1}, pa_color_theme(PA_NODE_CORE));
+        }
+
+        pa_fill_rect(surface, (PaRect){packet_mx - 1, packet_my - 1, 3, 3}, pa_color_theme(PA_PACKET_GLOW));
+        pa_fill_rect(surface, (PaRect){packet_mx, packet_my, 1, 1}, pa_color_theme(PA_PACKET_CORE));
+    }
+}
+
+void pa_ui_render_status(PaSurface *surface, const PaApp *app) {
+    char line[64];
+    bool active[PA_OP_COUNT];
+    PaRect observe = pa_observe_rect();
+    PaRect status = pa_status_rect();
+    int glyph_x = 48;
+    int glyph_y0 = observe.y + 8;
+    int glyph_step = 22;
+    int x = status.x;
+    int y = status.y + 8;
+    int i;
+
+    pa_collect_active_operators(app, active);
+
+    for (i = 0; i < PA_OP_COUNT; ++i) {
+        PaOperatorType op = k_operator_display_order[i];
+        uint32_t color = active[op] ? pa_operator_color(op) : pa_dim(pa_operator_color(op), 2u, 10u);
+
+        pa_draw_operator_glyph(surface, glyph_x, glyph_y0 + (i * glyph_step), op, color);
+    }
+
+    pa_draw_status_minimap(surface, app, x + 7, status.y + 24);
+
+    y = status.y + 126;
+    snprintf(line, sizeof(line), "L%02u %03d/%03d", (unsigned int)app->layer_index, app->packet_y % 1000, app->packet_x % 1000);
+    pa_draw_text_small(surface, x, y, line, pa_color_theme(PA_STATUS_TEXT));
+}
+
+void pa_ui_render_log(PaSurface *surface, const PaApp *app) {
+    char line[96];
+    PaRect log = pa_log_rect();
+    unsigned int pulse = 3u + ((app->frame % 48u) < 24u ? (app->frame % 24u) : (24u - (app->frame % 24u)));
+    uint32_t color = pa_dim(pa_add_rgb(pa_color_theme(PA_LOG_TEXT), 8, 12, 18), pulse, 26u);
+    int x;
+
+    snprintf(line, sizeof(line), "PROCESS ACTIVE");
+    x = log.x + ((log.w - pa_text_small_width(line)) / 2);
+    pa_draw_text_small(surface, x, log.y + 1, line, color);
+}
+
+void pa_ui_render_debug_map(PaSurface *surface, const PaApp *app) {
+    PaRect map = pa_map_rect();
+    int cam_x = pa_camera_x(app);
+    int cam_y = pa_camera_y(app);
+    int x;
+    int y;
+
+    pa_clear(surface, pa_color_theme(PA_VOID_COLOR));
+    pa_draw_text_small(surface, map.x, map.y - 12, "DEBUG MAP / WHOLE WORLD", pa_color_theme(PA_STATUS_TEXT));
+    pa_draw_text_small(surface, map.x + 156, map.y - 12, "TAB/SELECT", pa_color_theme(PA_STATUS_ACCENT));
+
+    for (y = 0; y < PA_WORLD_ROWS; ++y) {
+        for (x = 0; x < PA_WORLD_COLS; ++x) {
+            int strength = pa_manifest_mf_strength_impl(app, x, y);
+            uint32_t color = pa_color_theme(PA_VOID_COLOR);
+            unsigned int density = app->local_density[y][x];
+
+            if (app->calm[y][x] || strength > 0) {
+                color = pa_operator_color((PaOperatorType)app->operators[y][x]);
+            }
+
+            if (!app->calm[y][x] && strength == 0) {
+                color = pa_color_theme(PA_VOID_COLOR);
+            } else if (app->tiles[y][x] == PA_TILE_VOID) {
+                color = pa_dim(color, 1u, 8u);
+            } else if (app->calm[y][x]) {
+                color = pa_add_rgb(pa_dim(color, 7u, 10u), 10, 10, 10);
+            } else if (app->manifested[y][x]) {
+                color = pa_dim(color, 6u, 10u);
+            } else {
+                color = pa_dim(color, 3u, 10u);
+            }
+
+            if (!app->calm[y][x] && density > 0u) {
+                color = pa_add_rgb(color, (int)(density / 24u), (int)(density / 28u), (int)(density / 20u));
+            }
+
+            pa_fill_rect(surface, (PaRect){map.x + x, map.y + y, 1, 1}, color);
+        }
+    }
+
+    pa_draw_rect(surface, (PaRect){map.x - 1, map.y - 1, map.w + 2, map.h + 2}, pa_color_theme(PA_PANEL_EDGE));
+    pa_draw_rect(
+        surface,
+        (PaRect){map.x + cam_x, map.y + cam_y, PA_VIEW_COLS, PA_VIEW_ROWS},
+        pa_color_theme(PA_STATUS_TEXT)
+    );
+
+    pa_fill_rect(surface, (PaRect){map.x + app->transition_x - 1, map.y + app->transition_y - 1, 3, 3}, pa_color_theme(PA_NODE_GLOW));
+    pa_fill_rect(surface, (PaRect){map.x + app->transition_x, map.y + app->transition_y, 1, 1}, pa_color_theme(PA_NODE_CORE));
+
+    pa_fill_rect(surface, (PaRect){map.x + app->packet_x - 1, map.y + app->packet_y - 1, 3, 3}, pa_color_theme(PA_PACKET_GLOW));
+    pa_fill_rect(surface, (PaRect){map.x + app->packet_x, map.y + app->packet_y, 1, 1}, pa_color_theme(PA_PACKET_CORE));
+}
+
+```
+
+================================================================
+FILE: packetcli2machine/src/rendering/render_primitives.c
+================================================================
+
+```c
+#include "packet_adventure/render_primitives.h"
+
+#include <string.h>
+
+static uint16_t pa_pack_565(uint32_t color) {
+    unsigned int r = color & 0xFF;
+    unsigned int g = (color >> 8) & 0xFF;
+    unsigned int b = (color >> 16) & 0xFF;
+    return (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+}
+
+uint32_t pa_rgb(unsigned int r, unsigned int g, unsigned int b) {
+    return (r & 0xFFu) | ((g & 0xFFu) << 8) | ((b & 0xFFu) << 16);
+}
+
+static void pa_put_pixel(PaSurface *surface, int x, int y, uint32_t color) {
+    if (x < 0 || y < 0 || x >= surface->width || y >= surface->height) {
+        return;
+    }
+
+    if (surface->format == PA_PIXEL_FORMAT_8888) {
+        uint32_t *pixels = (uint32_t *)surface->pixels;
+        pixels[y * surface->stride + x] = color;
+    } else {
+        uint16_t *pixels = (uint16_t *)surface->pixels;
+        pixels[y * surface->stride + x] = pa_pack_565(color);
+    }
+}
+
+void pa_copy_surface(PaSurface *dst, const PaSurface *src) {
+    size_t row_bytes;
+    int y;
+
+    if (dst->width != src->width || dst->height != src->height || dst->format != src->format) {
+        return;
+    }
+
+    row_bytes = (size_t)dst->width * (dst->format == PA_PIXEL_FORMAT_8888 ? sizeof(uint32_t) : sizeof(uint16_t));
+    for (y = 0; y < dst->height; ++y) {
+        char *dst_row;
+        const char *src_row;
+
+        if (dst->format == PA_PIXEL_FORMAT_8888) {
+            dst_row = (char *)((uint32_t *)dst->pixels + (y * dst->stride));
+            src_row = (const char *)((const uint32_t *)src->pixels + (y * src->stride));
+        } else {
+            dst_row = (char *)((uint16_t *)dst->pixels + (y * dst->stride));
+            src_row = (const char *)((const uint16_t *)src->pixels + (y * src->stride));
+        }
+        memcpy(dst_row, src_row, row_bytes);
+    }
+}
+
+void pa_clear(PaSurface *surface, uint32_t color) {
+    int x;
+    int y;
+    for (y = 0; y < surface->height; ++y) {
+        for (x = 0; x < surface->width; ++x) {
+            pa_put_pixel(surface, x, y, color);
+        }
+    }
+}
+
+void pa_fill_rect(PaSurface *surface, PaRect rect, uint32_t color) {
+    int x;
+    int y;
+    for (y = rect.y; y < rect.y + rect.h; ++y) {
+        for (x = rect.x; x < rect.x + rect.w; ++x) {
+            pa_put_pixel(surface, x, y, color);
+        }
+    }
+}
+
+void pa_draw_rect(PaSurface *surface, PaRect rect, uint32_t color) {
+    int x;
+    int y;
+    for (x = rect.x; x < rect.x + rect.w; ++x) {
+        pa_put_pixel(surface, x, rect.y, color);
+        pa_put_pixel(surface, x, rect.y + rect.h - 1, color);
+    }
+    for (y = rect.y; y < rect.y + rect.h; ++y) {
+        pa_put_pixel(surface, rect.x, y, color);
+        pa_put_pixel(surface, rect.x + rect.w - 1, y, color);
+    }
+}
+
+void pa_draw_line(PaSurface *surface, int x0, int y0, int x1, int y1, uint32_t color) {
+    int dx = x1 > x0 ? x1 - x0 : x0 - x1;
+    int sx = x0 < x1 ? 1 : -1;
+    int dy = y1 > y0 ? -(y1 - y0) : -(y0 - y1);
+    int sy = y0 < y1 ? 1 : -1;
+    int err = dx + dy;
+
+    while (1) {
+        pa_put_pixel(surface, x0, y0, color);
+        if (x0 == x1 && y0 == y1) {
+            break;
+        }
+        if (2 * err >= dy) {
+            err += dy;
+            x0 += sx;
+        }
+        if (2 * err <= dx) {
+            err += dx;
+            y0 += sy;
+        }
+    }
+}
+
+```
+
+================================================================
+FILE: packetcli2machine/src/rendering/font_renderer.c
+================================================================
+
+```c
+#include "packet_adventure/font_renderer.h"
+
+#include "packet_adventure/render_primitives.h"
+
+typedef struct {
+    char ch;
+    const char *rows[7];
+} PaGlyph;
+
+typedef struct {
+    char ch;
+    const char *rows[5];
+} PaGlyphSmall;
+
+static const PaGlyph k_glyphs[] = {
+    {'A', {" ### ","#   #","#   #","#####","#   #","#   #","#   #"}},
+    {'B', {"#### ","#   #","#   #","#### ","#   #","#   #","#### "}},
+    {'C', {" ####","#    ","#    ","#    ","#    ","#    "," ####"}},
+    {'D', {"#### ","#   #","#   #","#   #","#   #","#   #","#### "}},
+    {'E', {"#####","#    ","#    ","#### ","#    ","#    ","#####"}},
+    {'F', {"#####","#    ","#    ","#### ","#    ","#    ","#    "}},
+    {'G', {" ####","#    ","#    ","#  ##","#   #","#   #"," ####"}},
+    {'H', {"#   #","#   #","#   #","#####","#   #","#   #","#   #"}},
+    {'I', {"#####","  #  ","  #  ","  #  ","  #  ","  #  ","#####"}},
+    {'K', {"#   #","#  # ","# #  ","##   ","# #  ","#  # ","#   #"}},
+    {'M', {"#   #","## ##","# # #","#   #","#   #","#   #","#   #"}},
+    {'N', {"#   #","##  #","##  #","# # #","#  ##","#  ##","#   #"}},
+    {'L', {"#    ","#    ","#    ","#    ","#    ","#    ","#####"}},
+    {'O', {" ### ","#   #","#   #","#   #","#   #","#   #"," ### "}},
+    {'P', {"#### ","#   #","#   #","#### ","#    ","#    ","#    "}},
+    {'R', {"#### ","#   #","#   #","#### ","# #  ","#  # ","#   #"}},
+    {'S', {" ####","#    ","#    "," ### ","    #","    #","#### "}},
+    {'T', {"#####","  #  ","  #  ","  #  ","  #  ","  #  ","  #  "}},
+    {'U', {"#   #","#   #","#   #","#   #","#   #","#   #"," ### "}},
+    {'V', {"#   #","#   #","#   #","#   #"," # # "," # # ","  #  "}},
+    {'W', {"#   #","#   #","#   #","# # #","# # #","## ##","#   #"}},
+    {'0', {" ### ","#   #","#  ##","# # #","##  #","#   #"," ### "}},
+    {'1', {"  #  "," ##  ","  #  ","  #  ","  #  ","  #  ","#####"}},
+    {'2', {" ### ","#   #","    #","   # ","  #  "," #   ","#####"}},
+    {'3', {" ### ","#   #","    #"," ### ","    #","#   #"," ### "}},
+    {'4', {"#   #","#   #","#   #","#####","    #","    #","    #"}},
+    {'5', {"#####","#    ","#    ","#### ","    #","    #","#### "}},
+    {'6', {" ####","#    ","#    ","#### ","#   #","#   #"," ### "}},
+    {'7', {"#####","    #","   # ","  #  "," #   ","#    ","#    "}},
+    {'8', {" ### ","#   #","#   #"," ### ","#   #","#   #"," ### "}},
+    {'9', {" ### ","#   #","#   #"," ####","    #","    #"," ### "}},
+    {' ', {"     ","     ","     ","     ","     ","     ","     "}},
+    {'-', {"     ","     ","     ","#####","     ","     ","     "}},
+    {'>', {"#    "," #   ","  #  ","   # ","  #  "," #   ","#    "}},
+    {':', {"     "," ##  "," ##  ","     "," ##  "," ##  ","     "}},
+};
+
+static const PaGlyphSmall k_small_glyphs[] = {
+    {'A', {" # ","# #","###","# #","# #"}},
+    {'B', {"## ","# #","## ","# #","## "}},
+    {'C', {" ##","#  ","#  ","#  "," ##"}},
+    {'D', {"## ","# #","# #","# #","## "}},
+    {'E', {"###","#  ","## ","#  ","###"}},
+    {'F', {"###","#  ","## ","#  ","#  "}},
+    {'G', {" ##","#  ","# #","# #"," ##"}},
+    {'H', {"# #","# #","###","# #","# #"}},
+    {'I', {"###"," # "," # "," # ","###"}},
+    {'K', {"# #","## ","#  ","## ","# #"}},
+    {'L', {"#  ","#  ","#  ","#  ","###"}},
+    {'M', {"# #","###","###","# #","# #"}},
+    {'N', {"# #","###","###","###","# #"}},
+    {'O', {"###","# #","# #","# #","###"}},
+    {'P', {"## ","# #","## ","#  ","#  "}},
+    {'R', {"## ","# #","## ","## ","# #"}},
+    {'S', {" ##","#  ","###","  #","## "}},
+    {'T', {"###"," # "," # "," # "," # "}},
+    {'U', {"# #","# #","# #","# #","###"}},
+    {'V', {"# #","# #","# #","# #"," # "}},
+    {'W', {"# #","# #","###","###","# #"}},
+    {'Y', {"# #","# #"," # "," # "," # "}},
+    {'0', {"###","# #","# #","# #","###"}},
+    {'1', {" # ","## "," # "," # ","###"}},
+    {'2', {"## ","  #","###","#  ","###"}},
+    {'3', {"## ","  #","## ","  #","## "}},
+    {'4', {"# #","# #","###","  #","  #"}},
+    {'5', {"###","#  ","## ","  #","## "}},
+    {' ', {"   ","   ","   ","   ","   "}},
+    {'>', {"#  "," # ","  #"," # ","#  "}},
+};
+
+static const char *const *pa_find_rows(char ch) {
+    unsigned int i;
+    for (i = 0; i < sizeof(k_glyphs) / sizeof(k_glyphs[0]); ++i) {
+        if (k_glyphs[i].ch == ch) {
+            return k_glyphs[i].rows;
+        }
+    }
+    return k_glyphs[sizeof(k_glyphs) / sizeof(k_glyphs[0]) - 1].rows;
+}
+
+static const char *const *pa_find_small_rows(char ch) {
+    unsigned int i;
+    for (i = 0; i < sizeof(k_small_glyphs) / sizeof(k_small_glyphs[0]); ++i) {
+        if (k_small_glyphs[i].ch == ch) {
+            return k_small_glyphs[i].rows;
+        }
+    }
+    return k_small_glyphs[sizeof(k_small_glyphs) / sizeof(k_small_glyphs[0]) - 1].rows;
+}
+
+void pa_draw_text(PaSurface *surface, int x, int y, const char *text, uint32_t color, int scale) {
+    int cursor = x;
+    int row;
+    int col;
+
+    if (scale < 1) {
+        scale = 1;
+    }
+
+    while (*text != '\0') {
+        const char *const *rows = pa_find_rows(*text);
+        for (row = 0; row < 7; ++row) {
+            for (col = 0; col < 5; ++col) {
+                if (rows[row][col] != ' ') {
+                    pa_fill_rect(surface,
+                        (PaRect){cursor + (col * scale), y + (row * scale), scale, scale},
+                        color);
+                }
+            }
+        }
+        cursor += 6 * scale;
+        text += 1;
+    }
+}
+
+int pa_text_width(const char *text, int scale) {
+    int count = 0;
+    if (scale < 1) {
+        scale = 1;
+    }
+    while (*text != '\0') {
+        count += 1;
+        text += 1;
+    }
+    if (count == 0) {
+        return 0;
+    }
+    return count * 6 * scale;
+}
+
+void pa_draw_text_small(PaSurface *surface, int x, int y, const char *text, uint32_t color) {
+    int cursor = x;
+    int row;
+    int col;
+
+    while (*text != '\0') {
+        const char *const *rows = pa_find_small_rows(*text);
+        for (row = 0; row < 5; ++row) {
+            for (col = 0; col < 3; ++col) {
+                if (rows[row][col] != ' ') {
+                    pa_fill_rect(surface, (PaRect){cursor + col, y + row, 1, 1}, color);
+                }
+            }
+        }
+        cursor += 4;
+        text += 1;
+    }
+}
+
+int pa_text_small_width(const char *text) {
+    int count = 0;
+    while (*text != '\0') {
+        count += 1;
+        text += 1;
+    }
+    if (count == 0) {
+        return 0;
+    }
+    return count * 4;
+}
+
+```
+
+================================================================
+FILE: packetcli2machine/packet/src/render_cli.c
+================================================================
+
+```c
+#include "packet/render_cli.h"
+
+#include <stdio.h>
+
+#include "packet_adventure/runtime_internal.h"
+
+#define PA_CLI_FRAME_END "---PACKET-CLI-FRAME-END---"
+
+static char pa_operator_glyph(PaOperatorType op, bool calm) {
+    char glyph = '?';
+
+    switch (op) {
+        case PA_OP_FLOW: glyph = 'f'; break;
+        case PA_OP_CONNECT: glyph = 'c'; break;
+        case PA_OP_DISSOLVE: glyph = 'd'; break;
+        case PA_OP_ENCODE: glyph = 'e'; break;
+        case PA_OP_CHOOSE: glyph = 'h'; break;
+        case PA_OP_OBSERVE: glyph = 'o'; break;
+        case PA_OP_CYCLE: glyph = 'y'; break;
+        case PA_OP_LOGIC: glyph = 'l'; break;
+        case PA_OP_RUNTIME: glyph = 'r'; break;
+        case PA_OP_MANIFEST: glyph = 'm'; break;
+        default: glyph = '?'; break;
+    }
+
+    if (calm && glyph >= 'a' && glyph <= 'z') {
+        glyph = (char)(glyph - ('a' - 'A'));
+    }
+    return glyph;
+}
+
+static char pa_density_glyph(unsigned int density, bool turbulence, bool calm) {
+    static const char k_ramp[] = " .:-=+*#%@";
+    unsigned int index = (density * 9u) / 255u;
+
+    if (calm) {
+        return 'C';
+    }
+    if (turbulence) {
+        return '!';
+    }
+    return k_ramp[index];
+}
+
+static const char *pa_cli_mode_name(PaCliRenderMode mode) {
+    switch (mode) {
+        case PA_CLI_MODE_GLYPH: return "glyph";
+        case PA_CLI_MODE_DENSITY: return "density";
+        case PA_CLI_MODE_COMPOSITE: return "composite";
+        default: return "unknown";
+    }
+}
+
+void pa_cli_render_frame(FILE *out, const PaApp *app, PaCliRenderMode mode, int auto_run) {
+    int min_x = app->packet_x - (PA_VIEW_COLS / 2);
+    int min_y = app->packet_y - (PA_VIEW_ROWS / 2);
+    unsigned int visible_manifest = 0u;
+    unsigned int visible_crystal = 0u;
+    unsigned int visible_turbulence = 0u;
+    unsigned int visible_walls = 0u;
+    unsigned int visible_latent = 0u;
+    int vy;
+
+    fprintf(out, "\x1b[H\x1b[2J");
+    fprintf(out, "PACKET DEV CLI  frame=%u sweep=%u sw=%s field=%d mode=%s run=%s turbulence>=%u\n",
+        app->frame,
+        app->sweep_frame,
+        app->sweep_paused ? "paused" : "live",
+        app->packet_field_radius,
+        pa_cli_mode_name(mode),
+        auto_run ? "auto" : "step",
+        PA_TURBULENCE_THRESHOLD);
+    fprintf(out, "packet=(%d,%d) transition=(%d,%d) layer=%u hash=%08X\n",
+        app->packet_x, app->packet_y,
+        app->transition_x, app->transition_y,
+        app->layer_index,
+        app->debug_world_hash);
+
+    for (vy = 0; vy < PA_VIEW_ROWS; ++vy) {
+        int vx;
+
+        for (vx = 0; vx < PA_VIEW_COLS; ++vx) {
+            int wx = pa_wrap_coord(min_x + vx, PA_WORLD_COLS);
+            int wy = pa_wrap_coord(min_y + vy, PA_WORLD_ROWS);
+            int mf_strength = pa_manifest_mf_strength_impl(app, wx, wy);
+            bool calm = app->calm[wy][wx];
+            bool manifested = mf_strength > 0;
+            bool turbulence = pa_manifest_cell_is_turbulence_impl(app, wx, wy);
+            unsigned int density = app->local_density[wy][wx];
+            char glyph = ' ';
+            char right = ' ';
+
+            if (wx == app->packet_x && wy == app->packet_y) {
+                glyph = '@';
+            } else if (wx == app->transition_x && wy == app->transition_y) {
+                glyph = '*';
+            } else if (app->tiles[wy][wx] == PA_TILE_WALL) {
+                glyph = '#';
+            } else if (calm) {
+                glyph = pa_operator_glyph((PaOperatorType)app->operators[wy][wx], true);
+            } else if (manifested) {
+                glyph = pa_operator_glyph((PaOperatorType)app->operators[wy][wx], false);
+            }
+
+            if (app->tiles[wy][wx] == PA_TILE_WALL) {
+                visible_walls += 1u;
+            } else if (calm) {
+                visible_crystal += 1u;
+            } else if (manifested) {
+                visible_manifest += 1u;
+                if (turbulence) {
+                    visible_turbulence += 1u;
+                }
+            } else {
+                visible_latent += 1u;
+            }
+
+            switch (mode) {
+                case PA_CLI_MODE_GLYPH:
+                    right = pa_density_glyph(density, turbulence, calm);
+                    break;
+                case PA_CLI_MODE_DENSITY:
+                    glyph = pa_density_glyph(density, turbulence, calm);
+                    right = (char)('0' + mf_strength);
+                    break;
+                case PA_CLI_MODE_COMPOSITE:
+                default:
+                    if (turbulence && glyph != '@' && glyph != '*' && glyph != '#') {
+                        glyph = '!';
+                    }
+                    right = (char)('0' + mf_strength);
+                    break;
+            }
+
+            fputc(glyph, out);
+            if (vx == PA_VIEW_COLS - 1) {
+                fprintf(out, " | ");
+            }
+            fputc(right, out);
+        }
+        fputc('\n', out);
+    }
+
+    fprintf(out, "view: latent=%u manifest=%u crystal=%u turbulence=%u walls=%u\n",
+        visible_latent,
+        visible_manifest,
+        visible_crystal,
+        visible_turbulence,
+        visible_walls);
+    fprintf(out, "legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf\n");
+    fprintf(out, "%s\n", PA_CLI_FRAME_END);
+    fflush(out);
+}
+
+```
+
+================================================================
+FILE: packetcli2machine/packet_machine_render_report.txt
+================================================================
+
+```text
+PACKET_MACHINE_RENDER_REPORT
+binary: ./packet_cli
+commands: n,n,n,n,n,QUIT
+snapshots: 7
+
+=== SNAPSHOT 00: startup ===
+PACKET DEV CLI  frame=0 sweep=0 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2
+ 2 2 3 3 3 3 3@3 3 3 3 3 3 2  | 2
+ 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+
+=== SNAPSHOT 01: n ===
+PACKET DEV CLI  frame=1 sweep=1 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+
+=== SNAPSHOT 02: n ===
+PACKET DEV CLI  frame=2 sweep=2 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+
+=== SNAPSHOT 03: n ===
+PACKET DEV CLI  frame=3 sweep=3 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+
+=== SNAPSHOT 04: n ===
+PACKET DEV CLI  frame=4 sweep=4 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+
+=== SNAPSHOT 05: n ===
+PACKET DEV CLI  frame=5 sweep=5 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+
+=== SNAPSHOT 06: QUIT ===
+PACKET DEV CLI  frame=5 sweep=5 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
+ 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
+ 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
+ 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+ 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
+ 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+ 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+ 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
+view: latent=212 manifest=12 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
+controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
+dev: space auto-run, n single tick, v cycle view, q/x quit
+
+
+```
