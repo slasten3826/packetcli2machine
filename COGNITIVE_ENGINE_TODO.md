@@ -90,6 +90,9 @@ See:
 
 - `pl_references/microPL.txt`
 - `pl_references/README_v3_rus.md`
+- `pl_references/SYNTAX_v2_ru.md`
+- `pl_references/python/`
+- `pl_references/zig/`
 
 These are included so another machine can reason about the next layer
 without needing the whole historical repository.

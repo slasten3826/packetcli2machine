@@ -38,8 +38,10 @@ Read in this order:
 5. `COGNITIVE_ENGINE_TODO.md`
 6. `pl_references/microPL.txt`
 7. `pl_references/README_v3_rus.md`
-8. `packet_machine/README.md`
-9. `packet_machine_render_report.txt`
+8. `pl_references/SYNTAX_v2_ru.md`
+9. `pl_references/python/processlang.py`
+10. `packet_machine/README.md`
+11. `packet_machine_render_report.txt`
 
 Then inspect source if needed:
 
