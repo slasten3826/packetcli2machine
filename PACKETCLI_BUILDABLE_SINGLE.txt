@@ -11,60 +11,103 @@ FILE: packetcli2machine/README.md
 ```text
 # packetcli2machine
 
-## What this is
+## Machine-First Repository
 
-This is a machine-facing Packet kit.
+This repository is not primarily for humans.
 
-Its purpose is not to expose the whole project.
+It is a machine-facing Packet kit.
+
 Its purpose is to let another machine:
 
-- build `packet_cli`
-- run `packet_cli`
-- run machine render over it
-- observe real Packet runtime behavior
+- build a real `packet_cli`
+- launch real Packet runtime
+- drive it through scripted interaction
+- observe live Packet state through machine render
+- call the same runtime through local MCP / HTTP passes
 
-## What is included
+This is not the whole game and not the whole project.
+It is a focused machine-playability slice.
 
-- minimal real source slice needed to build `packet_cli`
-- `packet_machine/packet_machine_render.py`
-- one sample machine render report
-- one prebuilt `packet_cli` binary if available on the source machine
+## Read Order
 
-## Fast path
+If you are another machine, read in this order:
 
-If the bundled binary works on the target machine:
+1. `MACHINE_INSTRUCTION.md`
+2. `packet_machine_render_layer.md`
+3. `PACKETCLI2MACHINE_SINGLE.txt`
+4. `PACKETCLI_BUILDABLE_SINGLE.txt`
+5. `PACKET_MCP_SINGLE.txt`
+6. `PACKET_MCP_HTTP_SINGLE.txt`
+
+## Main Entities
+
+### `packet_cli`
+
+Real Packet CLI runtime slice.
+
+### `packet_machine`
+
+Machine-facing render layer over `packet_cli`.
+
+### `packet_mcp`
+
+Protocol layer over `packet_machine`.
+
+Current passes:
+
+- local stdio MCP
+- local HTTP MCP pass
+
+## Build
 
 ```bash
-cd packetcli2machine
-./packet_cli
+make
 ```
 
-Machine-facing report:
+## Preferred machine entrypoint
+
+If you are another machine, do not start from raw `./packet_cli`.
+
+Preferred entrypoint:
 
 ```bash
-cd packetcli2machine
 python3 packet_machine/packet_machine_render.py
 ```
 
-## Build from source
+Why:
+
+- raw `packet_cli` expects a real TTY
+- `packet_machine` creates PTY and captures stable snapshots
+- report output is easier for another machine to reason about
+
+## Local MCP
+
+stdio server:
 
 ```bash
-cd packetcli2machine
-make
-./packet_cli
+python3 packet_mcp/server.py
 ```
 
-## Why this matters
+HTTP pass:
 
-This kit is meant to let another machine do more than read code and docs.
+```bash
+python3 packet_mcp/server_http.py --port 8123
+```
 
-It can:
+## What success means here
 
-- run the runtime
-- send scripted input
-- inspect state snapshots
+This repository succeeds if another machine can do more than read docs.
 
-That is the first practical step toward machine-visible Packet behavior.
+It should be able to:
+
+- trigger a real Packet run
+- observe a new runtime state
+- reason about the result
+- file real bug reports against the live stack
+
+## Short summary
+
+This repo is a machine-playability snapshot of Packet.
 
 ```
 
@@ -458,6 +501,7 @@ import os
 import pty
 import select
 import subprocess
+import termios
 import time
 from pathlib import Path
 
@@ -507,18 +551,17 @@ def token_to_chars(token: str) -> str:
     raise ValueError(f"Unsupported command token: {token}")
 
 
-def read_available(fd: int, quiet_ms: int, max_ms: int) -> str:
+def read_until_frame_end(fd: int, timeout_ms: int) -> str:
     chunks: list[bytes] = []
-    deadline = time.time() + (quiet_ms / 1000.0)
-    hard_deadline = time.time() + (max_ms / 1000.0)
+    deadline = time.time() + (timeout_ms / 1000.0)
+    text = ""
 
     while True:
-        if time.time() >= hard_deadline:
+        if time.time() >= deadline:
             break
-        timeout = max(0.0, deadline - time.time())
-        ready, _, _ = select.select([fd], [], [], timeout)
+        ready, _, _ = select.select([fd], [], [], 0.05)
         if not ready:
-            break
+            continue
         try:
             data = os.read(fd, 65536)
         except OSError:
@@ -526,9 +569,24 @@ def read_available(fd: int, quiet_ms: int, max_ms: int) -> str:
         if not data:
             break
         chunks.append(data)
-        deadline = time.time() + (quiet_ms / 1000.0)
+        text = b"".join(chunks).decode("utf-8", errors="replace")
+        if FRAME_END in text:
+            break
 
-    return b"".join(chunks).decode("utf-8", errors="replace")
+    return text or b"".join(chunks).decode("utf-8", errors="replace")
+
+
+def drain_ready(fd: int) -> None:
+    while True:
+        ready, _, _ = select.select([fd], [], [], 0.0)
+        if not ready:
+            return
+        try:
+            data = os.read(fd, 65536)
+        except OSError:
+            return
+        if not data:
+            return
 
 
 def extract_latest_snapshot(raw_text: str) -> str:
@@ -569,6 +627,11 @@ def run_machine_render(
     max_read_ms: int,
 ) -> list[tuple[str, str]]:
     master_fd, slave_fd = pty.openpty()
+    attrs = termios.tcgetattr(slave_fd)
+    attrs[3] &= ~(termios.ECHO | termios.ICANON)
+    attrs[6][termios.VMIN] = 0
+    attrs[6][termios.VTIME] = 0
+    termios.tcsetattr(slave_fd, termios.TCSANOW, attrs)
     proc = subprocess.Popen(
         [binary],
         stdin=slave_fd,
@@ -581,13 +644,14 @@ def run_machine_render(
     snapshots: list[tuple[str, str]] = []
 
     try:
-        initial_raw = read_available(master_fd, startup_ms, max_read_ms)
+        initial_raw = read_until_frame_end(master_fd, max_read_ms)
         snapshots.append(("startup", extract_latest_snapshot(initial_raw)))
 
         for token in commands:
+            drain_ready(master_fd)
             chars = token_to_chars(token)
             os.write(master_fd, chars.encode("utf-8"))
-            raw = read_available(master_fd, between_ms, max_read_ms)
+            raw = read_until_frame_end(master_fd, max_read_ms)
             snapshots.append((token, extract_latest_snapshot(raw)))
             if token.upper() == "QUIT":
                 break
@@ -4014,122 +4078,149 @@ snapshots: 7
 === SNAPSHOT 00: startup ===
 PACKET DEV CLI  frame=0 sweep=0 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
- 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
- 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
- 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
- 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
- 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2
- 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2
- 2 2 3 3 3 3 3@3 3 3 3 3 3 2  | 2
- 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2
- 2 2 2 3 3 3 3 3 3 3 3 3 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
- 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
- 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
- 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 01: n ===
-PACKET DEV CLI  frame=1 sweep=1 sw=live field=2 mode=composite run=step turbulence>=120
+PACKET DEV CLI  frame=0 sweep=0 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
- 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
- 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
- 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
- 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
- 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
- 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
- 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
- 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
- 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
- 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
- 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 02: n ===
-PACKET DEV CLI  frame=2 sweep=2 sw=live field=2 mode=composite run=step turbulence>=120
+PACKET DEV CLI  frame=1 sweep=1 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
- 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
- 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
- 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
- 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
- 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
- 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
- 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
- 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
- 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
- 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
- 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 03: n ===
-PACKET DEV CLI  frame=3 sweep=3 sw=live field=2 mode=composite run=step turbulence>=120
+PACKET DEV CLI  frame=2 sweep=2 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
- 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
- 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
- 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
- 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
- 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
- 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
- 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
- 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
- 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 04: n ===
-PACKET DEV CLI  frame=4 sweep=4 sw=live field=2 mode=composite run=step turbulence>=120
+PACKET DEV CLI  frame=3 sweep=3 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
- 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
- 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
- 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
- 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
- 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
- 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
- 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
- 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
- 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 05: n ===
-PACKET DEV CLI  frame=5 sweep=5 sw=live field=2 mode=composite run=step turbulence>=120
+PACKET DEV CLI  frame=4 sweep=4 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
- 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
- 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
- 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
- 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
- 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
- 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
- 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
- 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
- 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 06: QUIT ===
 PACKET DEV CLI  frame=5 sweep=5 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
- 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
- 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
- 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
- 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
- 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
- 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
- 2 2 3 3 3c3c3@3c3c3 3 3 3 2  | 2
- 2 2 2 3 3 3c3c3c3 3 3 3 2 2  | 2
- 2 2 2 3 3 3 3c3 3 3 3 3 2 2  | 2
- 2 2 2 2 3 3 3 3 3 3 3 2 2 2  | 2
- 2 2 2 2 2 3 3 3 3 3 2 2 2 2  | 2
- 1 2 2 2 2 2 2 3 2 2 2 2 2 2  | 1
- 1 2 2 2 2 2 2 2 2 2 2 2 2 2  | 1
- 1 1 1 2 2 2 2 2 2 2 2 2 1 1  | 1
-view: latent=212 manifest=12 crystal=1 turbulence=0 walls=0
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
-controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
-dev: space auto-run, n single tick, v cycle view, q/x quit
 
 
 ```

@@ -1,0 +1,152 @@
+PACKET_MACHINE_RENDER_REPORT
+binary: ./packet_cli
+commands: n,n,n,n,n,QUIT
+snapshots: 7
+
+=== SNAPSHOT 00: startup ===
+PACKET DEV CLI  frame=0 sweep=0 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
+
+=== SNAPSHOT 01: n ===
+PACKET DEV CLI  frame=0 sweep=0 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
+
+=== SNAPSHOT 02: n ===
+PACKET DEV CLI  frame=1 sweep=1 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
+
+=== SNAPSHOT 03: n ===
+PACKET DEV CLI  frame=2 sweep=2 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
+
+=== SNAPSHOT 04: n ===
+PACKET DEV CLI  frame=3 sweep=3 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
+
+=== SNAPSHOT 05: n ===
+PACKET DEV CLI  frame=4 sweep=4 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
+
+=== SNAPSHOT 06: QUIT ===
+PACKET DEV CLI  frame=5 sweep=5 sw=live field=2 mode=composite run=step turbulence>=120
+packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c3c3c3c3c3@3c3c3c3c3c3c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c3c3c3c3c3c3c3c3c3c2c2c | 2
+c2c2c2c2c3c3c3c3c3c3c3c2c2c2c | 2
+c2c2c2c2c2c3c3c3c3c3c2c2c2c2c | 2
+c1c2c2c2c2c2c2c3c2c2c2c2c2c2c | 1
+c1c2c2c2c2c2c2c2c2c2c2c2c2c2c | 1
+c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
+view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
+legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
+

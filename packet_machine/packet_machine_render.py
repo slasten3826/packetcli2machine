@@ -6,6 +6,7 @@ import os
 import pty
 import select
 import subprocess
+import termios
 import time
 from pathlib import Path
 
@@ -55,18 +56,17 @@ def token_to_chars(token: str) -> str:
     raise ValueError(f"Unsupported command token: {token}")
 
 
-def read_available(fd: int, quiet_ms: int, max_ms: int) -> str:
+def read_until_frame_end(fd: int, timeout_ms: int) -> str:
     chunks: list[bytes] = []
-    deadline = time.time() + (quiet_ms / 1000.0)
-    hard_deadline = time.time() + (max_ms / 1000.0)
+    deadline = time.time() + (timeout_ms / 1000.0)
+    text = ""
 
     while True:
-        if time.time() >= hard_deadline:
+        if time.time() >= deadline:
             break
-        timeout = max(0.0, deadline - time.time())
-        ready, _, _ = select.select([fd], [], [], timeout)
+        ready, _, _ = select.select([fd], [], [], 0.05)
         if not ready:
-            break
+            continue
         try:
             data = os.read(fd, 65536)
         except OSError:
@@ -74,9 +74,24 @@ def read_available(fd: int, quiet_ms: int, max_ms: int) -> str:
         if not data:
             break
         chunks.append(data)
-        deadline = time.time() + (quiet_ms / 1000.0)
+        text = b"".join(chunks).decode("utf-8", errors="replace")
+        if FRAME_END in text:
+            break
 
-    return b"".join(chunks).decode("utf-8", errors="replace")
+    return text or b"".join(chunks).decode("utf-8", errors="replace")
+
+
+def drain_ready(fd: int) -> None:
+    while True:
+        ready, _, _ = select.select([fd], [], [], 0.0)
+        if not ready:
+            return
+        try:
+            data = os.read(fd, 65536)
+        except OSError:
+            return
+        if not data:
+            return
 
 
 def extract_latest_snapshot(raw_text: str) -> str:
@@ -117,6 +132,11 @@ def run_machine_render(
     max_read_ms: int,
 ) -> list[tuple[str, str]]:
     master_fd, slave_fd = pty.openpty()
+    attrs = termios.tcgetattr(slave_fd)
+    attrs[3] &= ~(termios.ECHO | termios.ICANON)
+    attrs[6][termios.VMIN] = 0
+    attrs[6][termios.VTIME] = 0
+    termios.tcsetattr(slave_fd, termios.TCSANOW, attrs)
     proc = subprocess.Popen(
         [binary],
         stdin=slave_fd,
@@ -129,13 +149,14 @@ def run_machine_render(
     snapshots: list[tuple[str, str]] = []
 
     try:
-        initial_raw = read_available(master_fd, startup_ms, max_read_ms)
+        initial_raw = read_until_frame_end(master_fd, max_read_ms)
         snapshots.append(("startup", extract_latest_snapshot(initial_raw)))
 
         for token in commands:
+            drain_ready(master_fd)
             chars = token_to_chars(token)
             os.write(master_fd, chars.encode("utf-8"))
-            raw = read_available(master_fd, between_ms, max_read_ms)
+            raw = read_until_frame_end(master_fd, max_read_ms)
             snapshots.append((token, extract_latest_snapshot(raw)))
             if token.upper() == "QUIT":
                 break
