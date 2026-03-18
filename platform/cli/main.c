@@ -50,12 +50,18 @@ static int pa_cli_setup_terminal(void) {
     return 0;
 }
 
-static PaCliInput pa_cli_poll_input(void) {
+static PaCliInput pa_cli_poll_input(long timeout_ms) {
     PaCliInput input = {0u, 0, 0, 0, 0};
     fd_set readfds;
-    struct timeval timeout = {0, 0};
+    struct timeval timeout;
     char ch;
     ssize_t nread;
+
+    if (timeout_ms < 0L) {
+        timeout_ms = 0L;
+    }
+    timeout.tv_sec = timeout_ms / 1000L;
+    timeout.tv_usec = (suseconds_t)((timeout_ms % 1000L) * 1000L);
 
     FD_ZERO(&readfds);
     FD_SET(STDIN_FILENO, &readfds);
@@ -115,6 +121,7 @@ int main(void) {
     int auto_run = 0;
     int needs_render = 1;
     long sleep_ms = 120L;
+    long poll_ms = 10L;
 
     pa_app_init(&app);
 
@@ -133,7 +140,7 @@ int main(void) {
             needs_render = 0;
         }
 
-        input = pa_cli_poll_input();
+        input = pa_cli_poll_input(auto_run ? 0L : poll_ms);
         if (input.quit_requested) {
             break;
         }
@@ -158,7 +165,9 @@ int main(void) {
         if (app.quit_requested) {
             break;
         }
-        pa_cli_sleep_ms(auto_run ? sleep_ms : 10L);
+        if (auto_run) {
+            pa_cli_sleep_ms(sleep_ms);
+        }
     }
 
     return 0;
