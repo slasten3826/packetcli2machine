@@ -81,19 +81,6 @@ def read_until_frame_end(fd: int, timeout_ms: int) -> str:
     return text or b"".join(chunks).decode("utf-8", errors="replace")
 
 
-def drain_ready(fd: int) -> None:
-    while True:
-        ready, _, _ = select.select([fd], [], [], 0.0)
-        if not ready:
-            return
-        try:
-            data = os.read(fd, 65536)
-        except OSError:
-            return
-        if not data:
-            return
-
-
 def extract_latest_snapshot(raw_text: str) -> str:
     clean = strip_ansi(raw_text).replace("\r", "")
     if FRAME_END in clean:
@@ -153,7 +140,6 @@ def run_machine_render(
         snapshots.append(("startup", extract_latest_snapshot(initial_raw)))
 
         for token in commands:
-            drain_ready(master_fd)
             chars = token_to_chars(token)
             os.write(master_fd, chars.encode("utf-8"))
             raw = read_until_frame_end(master_fd, max_read_ms)

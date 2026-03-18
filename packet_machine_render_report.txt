@@ -25,6 +25,8 @@ view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 01: n ===
+controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
+dev: space auto-run, n single tick, v cycle view, q/x quit
 PACKET DEV CLI  frame=0 sweep=0 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -46,6 +48,8 @@ view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 02: n ===
+controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
+dev: space auto-run, n single tick, v cycle view, q/x quit
 PACKET DEV CLI  frame=1 sweep=1 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -67,6 +71,8 @@ view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 03: n ===
+controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
+dev: space auto-run, n single tick, v cycle view, q/x quit
 PACKET DEV CLI  frame=2 sweep=2 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -88,6 +94,8 @@ view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 04: n ===
+controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
+dev: space auto-run, n single tick, v cycle view, q/x quit
 PACKET DEV CLI  frame=3 sweep=3 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1

@@ -460,6 +460,8 @@ view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 01: n ===
+controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
+dev: space auto-run, n single tick, v cycle view, q/x quit
 PACKET DEV CLI  frame=0 sweep=0 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -481,6 +483,8 @@ view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 02: n ===
+controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
+dev: space auto-run, n single tick, v cycle view, q/x quit
 PACKET DEV CLI  frame=1 sweep=1 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -502,6 +506,8 @@ view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 03: n ===
+controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
+dev: space auto-run, n single tick, v cycle view, q/x quit
 PACKET DEV CLI  frame=2 sweep=2 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -523,6 +529,8 @@ view: latent=0 manifest=224 crystal=1 turbulence=0 walls=0
 legend: @ packet, * node, # wall, uppercase=CRYSTAL, lowercase=MANIFEST, !=TURBULENCE, right=density/mf
 
 === SNAPSHOT 04: n ===
+controls: WASD move, -= field, m map, r regen, f toggle SW, g step SW, [ ] speed
+dev: space auto-run, n single tick, v cycle view, q/x quit
 PACKET DEV CLI  frame=3 sweep=3 sw=live field=2 mode=composite run=step turbulence>=120
 packet=(224,63) transition=(102,141) layer=0 hash=81F4B24B
 c1c1c1c2c2c2c2c2c2c2c2c2c1c1c | 1
@@ -735,19 +743,6 @@ def read_until_frame_end(fd: int, timeout_ms: int) -> str:
     return text or b"".join(chunks).decode("utf-8", errors="replace")
 
 
-def drain_ready(fd: int) -> None:
-    while True:
-        ready, _, _ = select.select([fd], [], [], 0.0)
-        if not ready:
-            return
-        try:
-            data = os.read(fd, 65536)
-        except OSError:
-            return
-        if not data:
-            return
-
-
 def extract_latest_snapshot(raw_text: str) -> str:
     clean = strip_ansi(raw_text).replace("\r", "")
     if FRAME_END in clean:
@@ -807,7 +802,6 @@ def run_machine_render(
         snapshots.append(("startup", extract_latest_snapshot(initial_raw)))
 
         for token in commands:
-            drain_ready(master_fd)
             chars = token_to_chars(token)
             os.write(master_fd, chars.encode("utf-8"))
             raw = read_until_frame_end(master_fd, max_read_ms)
